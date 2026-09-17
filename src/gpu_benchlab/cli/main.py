@@ -21,6 +21,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from gpu_benchlab import __version__
+from gpu_benchlab.cli import run_cmd
 from gpu_benchlab.hardware import DetectionStatus, EnvironmentReport, detect_environment
 
 app = typer.Typer(
@@ -344,6 +345,13 @@ def doctor() -> None:
     console.print(table)
 
     raise typer.Exit(_exit_code(report))
+
+
+# ---------------------------------------------------------------------------------------
+# run (Phase 2)
+# ---------------------------------------------------------------------------------------
+
+run_cmd.register(app)
 
 
 def main() -> None:

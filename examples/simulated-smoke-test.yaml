@@ -1,0 +1,26 @@
+# Simulated smoke test for the benchmark framework.
+#
+# WARNING: `backend: fake` produces NO measurements. It runs a seeded random
+# latency model so the engine, statistics, schema and storage can be exercised on
+# a machine with no GPU. Results are stamped is_simulated=true and stored under a
+# `sim-` prefixed directory. Never present them as performance data.
+#
+# Real backends arrive in Phase 3 (pytorch), 4 (onnxruntime) and 5 (tensorrt).
+
+name: simulated-smoke-test
+description: >
+  Exercises the full benchmark path end to end without hardware.
+  Not a performance measurement.
+
+backend: fake
+precision: fp32
+batch_size: 4
+
+model:
+  name: simulated-vision-model
+  format: simulated
+  input_shape: [3, 224, 224]
+
+benchmark:
+  warmup_iterations: 10
+  measurement_iterations: 200
