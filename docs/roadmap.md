@@ -8,8 +8,8 @@ exists — it is done when it has been executed and its output verified.
 |---|---|---|
 | **0** | Repo, architecture, CLAUDE.md, README, dependency strategy | **Complete** |
 | **1** | Hardware / driver / CUDA / framework detection | **Complete** (GPU-present path unverified — see [limitations](limitations.md)) |
-| 2 | Benchmark core: timing engine, warmup, measurement loop, statistics, result schema | Next |
-| 3 | PyTorch backend: model load, CUDA inference, result persistence | Planned |
+| **2** | Benchmark core: timing engine, warmup, measurement loop, statistics, result schema | **Complete** (validated against a simulated backend; no real runtime yet) |
+| 3 | PyTorch backend: model load, CUDA inference, result persistence | Next |
 | 4 | ONNX Runtime backend: CUDA EP, explicit provider recording | Planned |
 | 5 | TensorRT backend: ONNX→engine build, serialization, inference | Planned |
 | 6 | GPU telemetry: sampled utilisation, VRAM, power, temperature | Planned |
@@ -22,13 +22,13 @@ exists — it is done when it has been executed and its output verified.
 
 ## Immediate next steps
 
-1. **Phase 2 — benchmark core.** Buildable and fully testable without a GPU: the
-   timing engine's structure, the statistics, the schema and the phase separation
-   can all be unit-tested with a fake backend on CPU.
-2. **Validate Phase 1 on real hardware.** The first time this runs on an NVIDIA
-   machine, confirm the NVML success path. This is the top-priority unknown.
-3. **Model selection (Phase 3 prerequisite).** Research and document the first
+1. **Model selection (Phase 3 prerequisite).** Research and document the first
    vision model and first small decoder-only LLM, with reasoning, in `docs/models.md`.
+2. **Phase 3 — PyTorch backend.** The first real runtime. Most of it is
+   developable on CPU (`device=cpu` exercises load/prepare/execute and the whole
+   engine path); the CUDA-event timer and any CUDA measurement are not.
+3. **Validate Phases 1-2 on real hardware.** Two things need a GPU to confirm: the
+   NVML success path, and the CUDA-event timer against a synchronized host clock.
 
 ## Deliberately deferred
 

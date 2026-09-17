@@ -56,8 +56,19 @@ src/gpu_benchlab/
         frameworks.py   which runtimes are installed and CUDA-capable
         types.py        versioned pydantic schema
         detect.py       orchestrator -> EnvironmentReport
-    core/          Phase 2 — timing engine, statistics, result schema
-    backends/      Phases 3-5, 10 — one module per inference runtime
+    core/          Phase 2 — the benchmark core
+        timing.py       Timer contract; WallClockTimer + ScriptedTimer
+        statistics.py   percentiles, spread, confidence flags
+        backend.py      the contract every backend implements
+        config.py       validated experiment configuration (YAML)
+        schema.py       versioned BenchmarkResult
+        engine.py       phase structure and the measurement loop
+        storage.py      JSON result persistence
+        provenance.py   git commit + dirty state
+        errors.py       exception taxonomy -> result status
+    backends/      one module per inference runtime
+        fake.py         simulated backend (framework testing only)
+        (pytorch, onnxruntime, tensorrt, tensorrt_llm: Phases 3-5, 10)
     telemetry/     Phase 6 — NVML sampling during a run
     experiments/   Phase 7 — config parsing, matrix expansion, runner
     compare/       Phase 8 — baselines and derived metrics
@@ -124,7 +135,30 @@ samples whenever they are displayed, so a stored result can never disagree with
 the numbers shown next to it, and a methodology fix retroactively corrects every
 comparison.
 
-## 5. Result schema sketch (Phase 2)
+### 4.8 The backend owns its timer; the engine never synchronizes
+
+The engine drives the phase structure but calls no CUDA API. Each backend returns
+its own `Timer` from `make_timer()`, because only the backend knows whether its
+work needs a device synchronization, a stream synchronization, CUDA events, or
+nothing at all. Hard-coding `torch.cuda.synchronize()` into the engine would be
+wrong for ONNX Runtime (which synchronizes internally), wrong for TensorRT (which
+wants a stream sync), wrong for CPU backends, and would put a CUDA dependency in
+code that must import on a GPU-less machine.
+
+The mechanism used is recorded on every result, so results measured on different
+bases are never silently compared.
+
+### 4.9 Simulation is contagious and multiply marked
+
+The simulated backend exists to test the framework, and the one thing this project
+must never do is let its output pass as a measurement. So `is_simulated` propagates
+from the backend descriptor to the top level of the result, the timing mechanism
+is `scripted`, a warning note travels with the result, the storage directory is
+`sim-` prefixed, and all four stored JSON files carry the flag independently.
+
+`BenchmarkResult.is_real_measurement` is the single check a consumer should use.
+
+## 5. Result schema (implemented — see `core/schema.py`)
 
 ```jsonc
 {

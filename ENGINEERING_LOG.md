@@ -130,3 +130,116 @@ requiring an actual NVIDIA GPU is implemented-and-unit-tested but **not executed
 2. **Validate Phase 1 on real hardware** at the first opportunity — highest-priority
    unknown.
 3. **Model selection** research for Phase 3, documented with reasoning.
+
+---
+
+## 2026-09-18 — Phase 2: benchmark core
+
+### Goal
+
+Build the measurement core — timing, warmup, statistics, result schema, config
+validation and storage — plus a deterministic simulated backend so all of it can
+be tested on a machine with no GPU.
+
+### Environment
+
+Unchanged from Phase 1: no NVIDIA GPU. See
+[`docs/environment-report.md`](docs/environment-report.md).
+
+### What was built
+
+| Module | Responsibility |
+|---|---|
+| `core/timing.py` | `Timer` contract, `WallClockTimer`, `ScriptedTimer`, `TimingMechanism` |
+| `core/statistics.py` | Percentiles, spread, sample validation, confidence flags |
+| `core/backend.py` | The contract every backend implements |
+| `core/config.py` | Validated YAML experiment configuration |
+| `core/schema.py` | Versioned `BenchmarkResult` |
+| `core/engine.py` | Phase structure and the measurement loop |
+| `core/storage.py` | JSON result persistence |
+| `core/provenance.py` | Git commit + dirty state |
+| `core/errors.py` | Exception taxonomy mapped to result status |
+| `backends/fake.py` | Deterministic simulated backend |
+| `cli/run_cmd.py` | `gpu-bench run` |
+
+### Results
+
+| Check | Result |
+|---|---|
+| `pytest` | **229 passed** (was 67) |
+| Coverage | 90% overall; Phase 2 core modules 93-100% |
+| `ruff check` / `format` | clean (now including bandit `S` rules) |
+| `mypy --strict` | clean, 23 source files |
+| Python 3.10.21 | 229 passed |
+| Python 3.12.10 | 229 passed |
+| `gpu-bench run` end to end | Executed; sample committed to `examples/sample-output/` |
+
+**Independent verification of every metric.** Rather than asserting that numpy
+agrees with numpy, the stored statistics were re-derived from `raw.json` using the
+stdlib `statistics` module and a hand-written percentile function. All agreed to
+within 1e-9: mean, median, stdev, min, max, p50, p90, p95, p99. The unit tests
+additionally use an analytically tractable dataset (1..100) where every expected
+value is computed by hand from the definition.
+
+### Observations
+
+1. **Simulation nearly produced a fabricated number, and the design caught it.**
+   The first end-to-end run reported observed throughput of 3,838,771 samples/sec.
+   The cause: that metric divides *real* wall-clock loop time by the work done, but
+   under the scripted timer the per-iteration durations are fabricated while the
+   loop's wall time is real. The two are not commensurable. The fix was to emit
+   nothing rather than emit a number nothing supports — which is the project's core
+   rule applied to its own output. Worth noting that this class of bug (mixing two
+   incommensurable time bases) is exactly what will bite on real hardware too.
+
+2. **Making the backend own its timer paid off immediately.** It was adopted so the
+   engine would not hard-code CUDA synchronization (ADR 0004), but the first
+   consumer was the simulated backend returning a `ScriptedTimer` — which is what
+   makes the entire test suite fast and deterministic. A design chosen for
+   correctness turned out to be the one that made testing tractable.
+
+3. **Rejecting NaN rather than dropping it is a correctness decision, not strictness.**
+   Dropping one bad sample from 100 silently changes every percentile and hides the
+   fact that the timing mechanism misbehaved. The engine records such a run as
+   `failed` with no statistics.
+
+4. **A single outlier moves p99 far less than intuition suggests.** With 99 samples
+   at 10ms and one at 1000ms, the linear-interpolated p99 is 19.9ms — it nearly
+   doubles, but lands nowhere near the outlier. So "p99 ≈ the slow case" is wrong in
+   both directions at this sample count. This is now a documented test case and the
+   concrete justification for the low-confidence flags.
+
+5. **`ddof` and percentile method had to become part of the schema.** Sample vs
+   population standard deviation differs by ~0.5% at n=100, and linear vs
+   nearest-rank percentiles differ visibly at small n. Recording the convention costs
+   two fields and removes a whole class of "why doesn't this match my other tool?".
+
+### Hypotheses to test on real hardware
+
+- **The synchronization hook placement.** `WallClockTimer` calls `synchronize()` at
+  both `start()` and `stop()`. Against `time.sleep` this is trivially correct; against
+  real asynchronous CUDA work it is an assumption. Expect it to hold; it is not a result.
+- **Measurement-loop overhead.** The loop is written bare (locals pre-bound, list
+  pre-sized, nothing else inside), but its cost relative to a real kernel is unknown.
+  An empty-loop baseline should quantify it before any speedup is claimed.
+- **Whether 10 warmup iterations is enough.** Warmup samples are now retained, so this
+  is answerable the moment a real workload exists — plot latency against iteration
+  index and find where it stabilises.
+
+### Known limitations
+
+The core has only ever driven the simulated backend. `TimingMechanism.CUDA_EVENT` is
+declared but not implemented. Full list in
+[`docs/limitations.md`](docs/limitations.md) §2b.
+
+**No performance data exists in this repository.** The only results produced are
+simulated and marked as such in five independent places.
+
+### Next
+
+1. **Model selection** — research and document the first vision model and first small
+   decoder-only LLM, with reasoning, in `docs/models.md`.
+2. **Phase 3 — PyTorch backend.** Much of it is developable on CPU (`device=cpu`
+   exercises load/prepare/execute and the whole engine path); the CUDA-event timer and
+   any CUDA measurement are not.
+3. **Validate Phases 1-2 on real hardware** when a GPU is available.

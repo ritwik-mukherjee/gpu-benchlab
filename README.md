@@ -6,11 +6,12 @@ acceleration stacks — PyTorch, ONNX Runtime, TensorRT and TensorRT-LLM.**
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 
-> **Status: early development — Phase 1 of 12.**
-> Hardware/environment detection is implemented and tested. Benchmark execution is not yet
-> implemented. This repository currently contains **no performance measurements**, because
-> none have been produced yet. When it does, every number in it will be traceable to a
-> stored raw result.
+> **Status: early development — Phase 2 of 12.**
+> Environment detection and the benchmark core (timing, warmup, statistics, result schema,
+> storage) are implemented and tested. No real inference backend exists yet — the core has
+> so far only driven a *simulated* backend used to test the framework itself.
+> This repository contains **no performance measurements**, because none have been produced.
+> When it does, every number in it will be traceable to a stored raw result.
 
 ---
 
@@ -71,6 +72,7 @@ Timing and validity methodology: [docs/methodology.md](docs/methodology.md).
 
 | Backend | Status | Notes |
 |---|---|---|
+| Simulated (`fake`) | Implemented | **Produces no measurements.** Seeded random latency model for testing the framework on a GPU-less machine. |
 | PyTorch (CUDA) | Planned — Phase 3 | CUDA-event timing |
 | ONNX Runtime | Planned — Phase 4 | Execution provider recorded explicitly |
 | TensorRT | Planned — Phase 5 | Engine build time measured separately |
@@ -146,29 +148,76 @@ gpu-bench doctor
 Exit codes: `0` GPU present, `1` no usable GPU, `2` detection failed. This makes the command
 usable as a CI gate.
 
-## 9. Creating experiments
+## 9. Running a benchmark
 
-Not yet implemented (Phase 7).
+Experiments are YAML files, validated before anything executes:
+
+```yaml
+name: simulated-smoke-test
+backend: fake          # the only backend that exists today
+precision: fp32
+batch_size: 4
+model:
+  name: simulated-vision-model
+  input_shape: [3, 224, 224]
+benchmark:
+  warmup_iterations: 10
+  measurement_iterations: 200
+```
+
+```bash
+gpu-bench run --config examples/simulated-smoke-test.yaml
+```
+
+This prints the phase breakdown (model load / engine build / prepare / warmup /
+measurement kept separate), latency statistics with low-confidence percentiles
+flagged, and throughput with its unit and formula named. The result is written to
+`results/<experiment-id>/`.
+
+Because `backend: fake` is simulated, the run prints a prominent warning, the
+result is stamped `is_simulated: true`, and its directory is `sim-` prefixed.
+
+A committed example of the output — schema and all — is in
+[`examples/sample-output/`](examples/sample-output/).
+
+Automated experiment matrices (sweeping batch sizes and precisions) arrive in Phase 7.
 
 ## 10. Viewing results
 
-Not yet implemented (Phase 9).
+Each experiment writes four files:
+
+| File | Contents |
+|---|---|
+| `result.json` | The complete result. Canonical — the others are views of it. |
+| `metadata.json` | Config, full environment, backend, provenance, status. |
+| `raw.json` | Every individual sample, warmup included, with units named. |
+| `summary.json` | Phases, latency statistics, throughput, errors. |
+
+Raw samples are always retained, so every statistic can be independently recomputed.
+
+The web dashboard arrives in Phase 9.
 
 ## 11. Reproducibility
 
-Every benchmark result will embed the `EnvironmentReport` produced by `gpu-bench hardware`,
-plus the experiment configuration and the git commit of the benchmark code itself. The schema
-is versioned (`schema_version`) so stored results stay readable as the format evolves.
+Every result embeds the full `EnvironmentReport`, the verbatim experiment configuration,
+and the git commit of the benchmark code — including whether the working tree was dirty,
+since a result produced from uncommitted changes is not reproducible from the commit alone.
+The schema is versioned (`schema_version`) and evolves additively, so stored results stay
+readable.
 
 ## 12. Benchmark methodology
 
 The short version:
 
 - `time.time()` is never used around GPU work; GPU execution is asynchronous.
-- Timing uses `time.perf_counter_ns()` with explicit synchronization, plus CUDA events where
-  the backend exposes them.
-- Warmup iterations are configurable and their defaults are justified, not arbitrary.
+- Timing uses `time.perf_counter_ns()`. **The engine never synchronizes on its own** — each
+  backend supplies its own timer, because only it knows whether a device sync, a stream sync
+  or CUDA events is correct. The mechanism used is recorded on every result.
+- Model load, engine build, warmup and steady-state inference are timed separately. A
+  TensorRT engine build can never leak into inference latency.
 - Raw samples are always retained so percentiles can be recomputed and outliers inspected.
+- Percentiles computed from too few samples to be stable are **flagged**, not presented as
+  solid. Percentile method and standard-deviation convention are recorded, since tools differ.
 
 The long version, including why each decision was made:
 [docs/methodology.md](docs/methodology.md).

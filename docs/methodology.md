@@ -1,8 +1,12 @@
 # Benchmark methodology
 
-> **Status:** this document specifies the methodology the benchmark engine (Phase 2)
-> will implement. Phase 1 — environment detection — is implemented and tested.
-> Nothing here has produced a measurement yet, because no benchmark engine exists yet.
+> **Status:** §§1-6 and §10 are **implemented** in `gpu_benchlab.core` as of Phase 2
+> and covered by tests. §§7-9 (repeats, telemetry sampling, framework overhead) are
+> specified but not yet implemented.
+>
+> Nothing here has produced a *measurement* yet. The engine has so far only driven a
+> simulated backend, which returns scripted numbers and is marked as such. See
+> [limitations.md](limitations.md) §2b for exactly what remains unproven.
 
 The purpose of this document is to let a sceptical reader decide whether to believe
 any number this project eventually publishes.
@@ -39,8 +43,17 @@ report them separately rather than picking a favourite.
 | TensorRT | CUDA events on the execution stream | `perf_counter_ns` + stream sync | Engine build and engine load are measured separately and never included. |
 | TensorRT-LLM | per-token timestamps | — | TTFT and inter-token latency require timestamps inside generation, not around it. |
 
-Whichever mechanism is used, the result records **which one**, so two results are
-never silently compared across different timing bases.
+Whichever mechanism is used, the result records **which one** (`timing_mechanism`),
+so two results are never silently compared across different timing bases.
+
+**The engine itself never synchronizes.** Each backend supplies its own timer via
+`Backend.make_timer()`, because only the backend knows which of the above is
+correct for it. The reasoning is recorded in
+[ADR 0004](decisions/0004-backend-owned-timers.md).
+
+A fifth mechanism, `scripted`, exists for the simulated backend. Any result
+carrying it is fabricated by construction and is marked simulated everywhere it
+appears.
 
 ## 3. Phase separation
 
@@ -67,7 +80,7 @@ CUDA context initialization, kernel autotuning and algorithm selection (notably
 cuDNN benchmark mode), lazy memory allocation and allocator cache population,
 JIT compilation, and clock ramp from idle.
 
-Defaults will be **10 warmup iterations** and **100 measured iterations**, both
+Defaults are **10 warmup iterations** and **100 measured iterations**, both
 configurable. The rationale:
 
 - 10 is generally enough to get past allocator and autotune effects for small
@@ -75,15 +88,16 @@ configurable. The rationale:
 - 100 gives a usable p95 and a meaningful p99 is *not* claimed from it — see §6.
 - Both numbers are recorded in the result, so a reader can judge them.
 
-**These defaults are a starting hypothesis, not a validated constant.** Once the
-engine exists, the correct warmup count will be determined empirically per backend
-by plotting latency against iteration index and identifying where it stabilises.
-That analysis will live in `analysis/` and this section will be updated with the
-measured answer. Until then, treat the defaults as unvalidated.
+**These defaults remain a starting hypothesis, not a validated constant.** The
+engine now *retains every warmup sample* (`raw_samples.warmup_latency_ms`), so the
+correct count can be determined empirically per backend by plotting latency against
+iteration index and finding where it stabilises. That analysis needs a real
+workload and has not been done. Until it is, treat the defaults as unvalidated.
 
-The runner is designed so that reporting cold-start numbers as steady-state
-requires deliberately setting `warmup_iterations: 0`, which is recorded in the
-result and surfaced in the report.
+Reporting cold-start numbers as steady-state requires deliberately setting
+`warmup_iterations: 0`. That sets `measures_steady_state: false` on the result,
+attaches an explicit warning note, and prints a warning in the CLI. It is possible,
+but it cannot happen by accident or pass unnoticed.
 
 ## 5. Statistics
 
@@ -95,8 +109,17 @@ Reported per run: min, max, mean, median, p50, p90, p95, p99, standard deviation
 sample count.
 
 Percentiles use linear interpolation between order statistics (`numpy.percentile`
-default). The method is stated because percentile definitions differ between tools
-and the difference is visible at small sample counts.
+default, equivalent to Excel `PERCENTILE.INC`). Standard deviation uses `ddof=1`
+(sample, Bessel-corrected) because benchmark iterations are a sample of the
+possible runs, not the population.
+
+Both choices are **recorded in the result** (`percentile_method`, `stddev_ddof`),
+because tools disagree on both and the difference is visible at small sample counts.
+
+Invalid samples — empty sets, NaN, infinity, negative durations — are **rejected**,
+not dropped. A NaN means the timing mechanism misbehaved; silently discarding it
+would change every other statistic and hide a real defect. Such a run is recorded
+as `failed` with no statistics rather than as a success with quietly-cleaned data.
 
 ## 6. What a percentile from N samples can honestly support
 
@@ -110,8 +133,15 @@ Guidance the tooling will enforce in reports:
 | p95 | ~200 |
 | p99 | ~1000 |
 
-Where sample count is insufficient, the report will mark the statistic as
-low-confidence rather than printing it as though it were solid.
+Where the sample count is insufficient, the statistic is still reported — it is a
+real order statistic of real data — but it is flagged in
+`low_confidence_percentiles` and marked in the CLI output, rather than printed as
+though it were solid.
+
+Worked example from the test suite: with 99 samples at 10ms and one at 1000ms, the
+linear-interpolated p99 is 19.9ms. A single outlier nearly doubles it, while p50 is
+untouched — and it lands nowhere near the outlier's own value, so a reader who
+reads p99 as "the slow case" is also wrong. Both errors are why it is flagged.
 
 ## 7. Variability and repeats
 
