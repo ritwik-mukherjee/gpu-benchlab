@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "EXAMPLE-SIMULATED",
+  "status": "ok",
+  "is_simulated": true,
+  "backend": "fake",
+  "precision": "fp32",
+  "batch_size": 4,
+  "timing_mechanism": "scripted",
+  "measures_steady_state": true,
+  "phases": {
+    "model_load_ms": 0.0033,
+    "engine_build_ms": 0.0023,
+    "prepare_inputs_ms": 0.0062,
+    "warmup_total_ms": 0.0513,
+    "measurement_total_ms": 0.2626
+  },
+  "latency_ms": {
+    "count": 200,
+    "min_ms": 13.1900272982038,
+    "max_ms": 15.667877111240278,
+    "mean_ms": 14.564042879327936,
+    "median_ms": 14.59947858722235,
+    "stddev_ms": 0.47696046235041756,
+    "p50_ms": 14.59947858722235,
+    "p90_ms": 15.1810876121794,
+    "p95_ms": 15.37675716063583,
+    "p99_ms": 15.64190561867414,
+    "percentile_method": "linear",
+    "stddev_ddof": 1,
+    "low_confidence_percentiles": [
+      "p99"
+    ]
+  },
+  "throughput": [
+    {
+      "value": 274.64901285600865,
+      "unit": "samples/sec",
+      "basis": "batch_size / mean_latency_s"
+    }
+  ],
+  "errors": [],
+  "notes": [
+    "SIMULATED RESULT: produced by a simulated backend. These numbers exercise the benchmarking framework itself and are NOT measurements of any GPU, model or inference runtime. They must never be presented as performance data."
+  ]
+}

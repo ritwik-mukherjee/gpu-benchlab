@@ -79,3 +79,57 @@ jobs:
           assert d['detection_error'], 'a non-ok status must explain itself'
           print('Schema valid; report correctly claims no GPU.')
           "
+
+      # The benchmark core must work end to end on a GPU-less runner, using the
+      # simulated backend. This also asserts that a simulated result is marked as
+      # such in every place it should be -- the guarantee that keeps fabricated
+      # numbers from ever being mistaken for measurements.
+      - name: Run the benchmark core with the simulated backend
+        shell: bash
+        run: |
+          gpu-bench run --config examples/simulated-smoke-test.yaml --results-dir ci-results --seed 42
+          python -c "
+          import glob, json, sys
+          paths = glob.glob('ci-results/*/result.json')
+          assert len(paths) == 1, f'expected one result, got {paths}'
+          assert 'sim-' in paths[0], 'simulated result must use a sim- prefixed directory'
+          r = json.load(open(paths[0]))
+          assert r['status'] == 'ok', r['status']
+          assert r['is_simulated'] is True, 'simulated result not flagged'
+          assert r['backend']['is_simulated'] is True
+          assert r['timing_mechanism'] == 'scripted'
+          assert any('SIMULATED' in n for n in r['notes']), 'missing simulation warning'
+          assert len(r['raw_samples']['latency_ms']) == 200, 'raw samples not preserved'
+          assert len(r['raw_samples']['warmup_latency_ms']) == 10, 'warmup samples not retained'
+          assert r['latency']['count'] == 200
+          assert r['phases']['engine_build_ms'] is not None, 'phases not separated'
+          for t in r['throughput']:
+              assert t['unit'], 'throughput without a unit'
+              assert t['basis'], 'throughput without a stated derivation'
+          print('Benchmark core OK; result correctly marked simulated.')
+          "
+
+      # Re-derive the stored statistics from the stored raw samples using only the
+      # stdlib, so a bug in the statistics module cannot validate itself.
+      - name: Verify statistics are reproducible from raw samples
+        shell: bash
+        run: |
+          python -c "
+          import glob, json, statistics as st
+          raw = json.load(open(glob.glob('ci-results/*/raw.json')[0]))
+          summary = json.load(open(glob.glob('ci-results/*/summary.json')[0]))
+          x, lat = raw['latency_ms'], summary['latency_ms']
+          def pct(v, p):
+              v = sorted(v); k = (len(v)-1)*p/100.0; f = int(k); c = min(f+1, len(v)-1)
+              return v[f] + (v[c]-v[f])*(k-f)
+          checks = [
+              ('mean', st.fmean(x), lat['mean_ms']),
+              ('median', st.median(x), lat['median_ms']),
+              ('stddev', st.stdev(x), lat['stddev_ms']),
+              ('min', min(x), lat['min_ms']),
+              ('max', max(x), lat['max_ms']),
+          ] + [(f'p{p}', pct(x, p), lat[f'p{p}_ms']) for p in (50, 90, 95, 99)]
+          for name, expected, stored in checks:
+              assert abs(expected-stored) < 1e-9, f'{name}: {expected} != {stored}'
+          print('All statistics independently reproduced from raw samples.')
+          "

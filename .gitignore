@@ -45,3 +45,4 @@ results/*
 .DS_Store
 Thumbs.db
 desktop.ini
+ci-results/

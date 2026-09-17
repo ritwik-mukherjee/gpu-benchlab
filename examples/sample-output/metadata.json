@@ -1,0 +1,121 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "EXAMPLE-SIMULATED",
+  "group_id": null,
+  "repeat_index": 0,
+  "timestamp_utc": "2026-09-18T00:00:00+00:00",
+  "status": "ok",
+  "is_simulated": true,
+  "configuration": {
+    "name": "simulated-smoke-test",
+    "description": "Exercises the full benchmark path end to end without hardware. Not a performance measurement.\n",
+    "model": {
+      "name": "simulated-vision-model",
+      "source": null,
+      "revision": null,
+      "format": "simulated",
+      "input_shape": [
+        3,
+        224,
+        224
+      ],
+      "sequence_length": null
+    },
+    "backend": "fake",
+    "precision": "fp32",
+    "batch_size": 4,
+    "device": null,
+    "benchmark": {
+      "warmup_iterations": 10,
+      "measurement_iterations": 200,
+      "repeats": 1
+    }
+  },
+  "backend": {
+    "name": "fake",
+    "version": "simulated",
+    "execution_provider": null,
+    "device": "simulated",
+    "is_simulated": true,
+    "detail": "Simulated backend. Produces scripted durations from a seeded generator (seed=42); measures no real hardware."
+  },
+  "environment": {
+    "schema_version": "1.0",
+    "timestamp_utc": "2026-09-17T19:23:33.472288+00:00",
+    "benchlab_version": "0.1.0",
+    "host": {
+      "hostname": "DESKTOP-GJH8ALQ",
+      "os_name": "Windows",
+      "os_version": "10.0.26200",
+      "os_release": "11",
+      "architecture": "AMD64",
+      "cpu_model": "Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",
+      "cpu_physical_cores": 4,
+      "cpu_logical_cores": 8,
+      "total_memory_bytes": 16976740352,
+      "python_version": "3.12.10",
+      "python_implementation": "CPython",
+      "python_executable": "C:\\Claude2\\GPU INFERENCE PROJECT\\.venv\\Scripts\\python.exe"
+    },
+    "nvml": {
+      "driver_version": null,
+      "nvml_version": null,
+      "cuda_driver_version": null
+    },
+    "gpus": [],
+    "frameworks": [
+      {
+        "name": "torch",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'torch')."
+      },
+      {
+        "name": "onnxruntime",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'onnxruntime')."
+      },
+      {
+        "name": "tensorrt",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'tensorrt')."
+      },
+      {
+        "name": "tensorrt_llm",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'tensorrt_llm')."
+      }
+    ],
+    "detection_status": "driver_unavailable",
+    "detection_error": "NVML could not be loaded. This normally means no NVIDIA driver is installed on this machine. Underlying error: NVML Shared Library Not Found"
+  },
+  "timing_mechanism": "scripted",
+  "measures_steady_state": true,
+  "provenance": {
+    "benchlab_version": "0.1.0",
+    "git_commit": "867545ba5677e2eab1a40093af54a24c8c719875",
+    "git_dirty": true
+  },
+  "notes": [
+    "SIMULATED RESULT: produced by a simulated backend. These numbers exercise the benchmarking framework itself and are NOT measurements of any GPU, model or inference runtime. They must never be presented as performance data."
+  ]
+}
