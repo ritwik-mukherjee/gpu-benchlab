@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The entire non-GPU suite runs on standard runners. This is possible because the
+  # core install is CPU-only by design (ADR 0003) — no GPU runners, no cost, no queue.
+  test:
+    name: test (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install project
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format check
+        run: ruff format --check .
+
+      - name: Type check
+        run: mypy
+
+      - name: Test
+        run: pytest -v --cov=gpu_benchlab --cov-report=term-missing
+
+      # The detection layer must behave correctly on a machine with no NVIDIA GPU.
+      # CI runners have none, so this is a genuine test of the degradation path.
+      # Exit code 1 means "ran fine, found no GPU" — which is the expected result here.
+      - name: Verify hardware detection degrades honestly with no GPU
+        shell: bash
+        run: |
+          set +e
+          gpu-bench hardware --skip-frameworks
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::Expected exit code 1 (no GPU) on a GPU-less runner, got $code"
+            exit 1
+          fi
+          echo "Detection correctly reported no NVIDIA GPU."
+
+      - name: Verify JSON report is valid and claims no GPU
+        shell: bash
+        run: |
+          set +e
+          gpu-bench hardware --json --skip-frameworks > env.json
+          set -e
+          python -c "
+          import json, sys
+          d = json.load(open('env.json'))
+          assert d['schema_version'], 'missing schema_version'
+          assert d['gpus'] == [], 'a GPU-less runner must report no GPUs'
+          assert d['detection_status'] != 'ok', 'must not report ok without a GPU'
+          assert d['detection_error'], 'a non-ok status must explain itself'
+          print('Schema valid; report correctly claims no GPU.')
+          "
