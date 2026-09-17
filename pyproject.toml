@@ -75,17 +75,35 @@ target-version = "py310"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "ANN", "BLE"]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "ANN", "BLE", "S"]
 ignore = [
     "ANN401",  # Any is legitimate at the NVML/ctypes and JSON boundaries.
     "B008",    # typer uses function calls (typer.Option) in argument defaults by design.
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ANN"]
+# Tests use bare asserts (S101) and do not need full annotations.
+"tests/**" = ["ANN", "S101"]
+# Backend.load/build/validate/synchronize/close are deliberately optional hooks
+# with no-op defaults: not every runtime has an engine build or needs a device
+# synchronization. Making them abstract would force every backend to write five
+# empty methods, so B027 is opted out of here by design (see ADR 0004).
+"src/gpu_benchlab/core/backend.py" = ["B027"]
+# The fake backend asserts on config type to keep the contract honest, and uses
+# `random` deliberately: reproducibility is the requirement, not unpredictability.
+# A seeded Mersenne Twister is exactly right here and is never security-relevant.
+"src/gpu_benchlab/backends/fake.py" = ["S101", "S311"]
+# S607: "git" is resolved from PATH on purpose -- a developer tool must use the
+# developer's git. The argv is a fixed list with shell=False and no user input.
+"src/gpu_benchlab/core/provenance.py" = ["S607"]
 
 [tool.mypy]
-python_version = "3.10"
+# Type-checked at 3.12, not 3.10: numpy's shipped stubs use PEP 695 `type`
+# statements that mypy cannot parse under an older target. Runtime support for
+# 3.10 is verified the way it should be -- by running the real test suite on
+# 3.10 in CI -- and ruff (target-version = py310) still rejects syntax that
+# 3.10 could not execute.
+python_version = "3.12"
 packages = ["gpu_benchlab"]
 mypy_path = "src"
 strict = true
