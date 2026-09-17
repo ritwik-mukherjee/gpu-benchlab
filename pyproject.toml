@@ -1,0 +1,107 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gpu-benchlab"
+version = "0.1.0"
+description = "Open-source framework for measuring and comparing AI inference performance across NVIDIA acceleration stacks."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+keywords = ["gpu", "benchmark", "inference", "nvidia", "cuda", "tensorrt", "onnxruntime", "pytorch"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Benchmark",
+]
+
+# Core dependencies are deliberately CPU-installable and lightweight.
+# Every GPU/runtime dependency is an optional extra so that:
+#   1. the framework, CLI, schema and test-suite install anywhere (incl. CI runners with no GPU),
+#   2. a machine without an NVIDIA GPU can still exercise the detection and "unsupported" paths.
+# `nvidia-ml-py` is a pure-python ctypes wrapper: it installs without a GPU and fails
+# at nvmlInit() time, which is exactly the behaviour the detection layer is built to report.
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.7",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+    "psutil>=5.9",
+    "nvidia-ml-py>=12.535",
+]
+
+[project.optional-dependencies]
+# --- Inference backends (installed per-machine; see docs/environment.md) -------------
+# PyTorch is intentionally NOT pinned to a CUDA build here. The correct wheel depends on
+# the target machine's driver. See docs/environment.md for the per-CUDA index URLs.
+torch = ["torch>=2.4"]
+onnx = ["onnx>=1.16", "onnxruntime-gpu>=1.18"]
+onnx-cpu = ["onnx>=1.16", "onnxruntime>=1.18"]
+tensorrt = ["tensorrt>=10.0"]
+
+# --- Development ---------------------------------------------------------------------
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "types-PyYAML>=6.0",
+]
+
+[project.scripts]
+gpu-bench = "gpu_benchlab.cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/your-org/gpu-inference-benchmarking-lab"
+Documentation = "https://github.com/your-org/gpu-inference-benchmarking-lab/tree/main/docs"
+Issues = "https://github.com/your-org/gpu-inference-benchmarking-lab/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gpu_benchlab"]
+
+# ---------------------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "ANN", "BLE"]
+ignore = [
+    "ANN401",  # Any is legitimate at the NVML/ctypes and JSON boundaries.
+    "B008",    # typer uses function calls (typer.Option) in argument defaults by design.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["gpu_benchlab"]
+mypy_path = "src"
+strict = true
+warn_unreachable = true
+# Optional GPU runtimes are absent on CPU-only dev machines and CI.
+[[tool.mypy.overrides]]
+module = ["pynvml.*", "torch.*", "onnxruntime.*", "tensorrt.*", "tensorrt_llm.*", "psutil.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "gpu: requires a physically present, driver-visible NVIDIA GPU",
+    "torch: requires PyTorch to be installed",
+    "onnx: requires ONNX Runtime to be installed",
+    "tensorrt: requires TensorRT to be installed",
+    "slow: takes more than a few seconds",
+]

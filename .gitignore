@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Model weights and derived artifacts — never commit these (PRD §40).
+# Provide fetch scripts instead.
+models/
+*.onnx
+*.engine
+*.plan
+*.trt
+*.pt
+*.pth
+*.safetensors
+*.gguf
+
+# Benchmark results are real data: keep them out of the default tree, and curate
+# which runs get published under results/published/ explicitly.
+results/*
+!results/.gitkeep
+!results/published/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
