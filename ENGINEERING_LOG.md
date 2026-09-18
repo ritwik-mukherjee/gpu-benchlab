@@ -243,3 +243,49 @@ simulated and marked as such in five independent places.
    exercises load/prepare/execute and the whole engine path); the CUDA-event timer and
    any CUDA measurement are not.
 3. **Validate Phases 1-2 on real hardware** when a GPU is available.
+
+---
+
+## 2026-09-18 — Phase 3 preparation: model selection and backend design
+
+No code changed. Research and design only; see [`docs/models.md`](docs/models.md)
+and [`docs/plans/phase-3-pytorch-backend.md`](docs/plans/phase-3-pytorch-backend.md).
+
+### Selected
+
+- **Vision:** ResNet-50 (torchvision, v1.5), weights pinned by explicit name
+  `IMAGENET1K_V2`, plus a download-free random-init mode for tests.
+- **LLM:** Qwen3-1.7B @ `70d244cc`, with Qwen3-0.6B @ `c1899de2` as a secondary.
+
+### Findings that would have produced wrong numbers
+
+1. **PyTorch "FP32" is not IEEE FP32 by default.** `torch.backends.cudnn.allow_tf32`
+   defaults to True (PyTorch 2.14 docs), so FP32 convolutions on Ampere+ run as TF32.
+   For a convolution-dominated model like ResNet-50, a naive "FP32 vs FP16"
+   comparison is really "TF32 vs FP16". The plan sets FP32 precision explicitly and
+   records it.
+2. **transformers v5 loads the saved dtype by default** (`dtype="auto"`), so a config
+   saying FP32 would silently get BF16.
+3. **Qwen3's checkpoint stores `lm_head` separately despite tied embeddings.**
+   Verified from the safetensors index: shard 2 contains only `lm_head.weight`. Disk
+   size (4.06 GB) overstates tied memory (~3.44 GB), and runtimes may disagree on
+   deduplication, which would contaminate cross-backend VRAM comparisons.
+
+All added to CLAUDE.md §12.
+
+### Why Qwen3 over Qwen2.5, arithmetically
+
+The per-token KV cache follows from published configs: 112 KiB (Qwen3-1.7B, 8 KV
+heads) vs 28 KiB (Qwen2.5-1.5B, 2 KV heads). Only the former produces meaningful
+memory pressure in sequence-length experiments on consumer cards. Qwen3-0.6B shares
+Qwen3-1.7B's KV geometry exactly, making the pair a controlled comparison of
+weight-driven vs KV-driven decode cost.
+
+### Gaps found in the Phase 2 contract while designing
+
+- Nothing can produce `status: unavailable`, so a missing device would be
+  mis-recorded as `failed`.
+- Error phase attribution is coarse: OOM is always tagged `execute`, even when raised
+  in `prepare()`.
+
+Both are scheduled as step 1 of Phase 3.
