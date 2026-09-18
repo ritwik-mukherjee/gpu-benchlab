@@ -107,3 +107,54 @@ class TestFrameworkLookup:
         report = detect_environment(include_frameworks=True)
         assert report.framework("torch") is not None
         assert report.framework("definitely-not-a-framework") is None
+
+
+class TestPowerSource:
+    """Power source was the dominant confounder in the 2026-09-18 A/B run."""
+
+    def _battery(self, plugged: bool | None, percent: float):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(power_plugged=plugged, percent=percent, secsleft=0)
+
+    def test_on_battery(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import psutil
+
+        monkeypatch.setattr(psutil, "sensors_battery", lambda: self._battery(False, 72.0))
+        host = probe_host()
+        assert host.power_plugged is False
+        assert host.battery_percent == 72.0
+
+    def test_on_ac(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import psutil
+
+        monkeypatch.setattr(psutil, "sensors_battery", lambda: self._battery(True, 98.0))
+        assert probe_host().power_plugged is True
+
+    def test_unknown_plug_state_is_none_not_false(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """psutil may report power_plugged=None; that must not become 'on battery'."""
+        import psutil
+
+        monkeypatch.setattr(psutil, "sensors_battery", lambda: self._battery(None, 50.0))
+        assert probe_host().power_plugged is None
+
+    def test_no_battery_is_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import psutil
+
+        monkeypatch.setattr(psutil, "sensors_battery", lambda: None)
+        host = probe_host()
+        assert host.power_plugged is None
+        assert host.battery_percent is None
+
+    def test_environment_schema_is_1_1_and_1_0_still_loads(self) -> None:
+        import json
+        from pathlib import Path
+
+        from gpu_benchlab.hardware import EnvironmentReport
+
+        assert ENVIRONMENT_SCHEMA_VERSION == "1.1"
+        fixture = Path(__file__).parent.parent / "fixtures" / "result_schema_1_0.json"
+        env = json.loads(fixture.read_text(encoding="utf-8"))["environment"]
+        assert env["schema_version"] == "1.0"
+        report = EnvironmentReport.model_validate(env)
+        assert report.host.power_plugged is None

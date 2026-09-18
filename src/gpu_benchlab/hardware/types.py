@@ -17,7 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from gpu_benchlab.hardware.capability import Precision, PrecisionSupport
 
-ENVIRONMENT_SCHEMA_VERSION = "1.0"
+# 1.1: adds host power_plugged / battery_percent (additive; 1.0 reports still load).
+ENVIRONMENT_SCHEMA_VERSION = "1.1"
 
 __all__ = [
     "ENVIRONMENT_SCHEMA_VERSION",
@@ -192,6 +193,16 @@ class HostInfo(BaseModel):
     python_version: str
     python_implementation: str
     python_executable: str
+    power_plugged: bool | None = Field(
+        default=None,
+        description=(
+            "True on mains power, False on battery, None if the machine reports no "
+            "battery (desktops, most servers). Recorded because laptop CPUs and GPUs "
+            "can run at different clocks on battery; it was the dominant confounder "
+            "in the 2026-09-18 CPU A/B experiment and was invisible in the results."
+        ),
+    )
+    battery_percent: float | None = None
 
 
 class EnvironmentReport(BaseModel):

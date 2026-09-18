@@ -62,9 +62,26 @@ def _total_memory_bytes() -> int | None:
         return None
 
 
+def _power() -> tuple[bool | None, float | None]:
+    """(plugged_in, battery_percent), both None when no battery is reported."""
+    try:
+        import psutil
+
+        battery = psutil.sensors_battery()
+    except (ImportError, AttributeError, RuntimeError, OSError):
+        return None, None
+    if battery is None:
+        return None, None
+    # psutil documents power_plugged as None when it cannot be determined; bool(None)
+    # would silently record 'on battery'.
+    plugged = None if battery.power_plugged is None else bool(battery.power_plugged)
+    return plugged, float(battery.percent)
+
+
 def probe_host() -> HostInfo:
     """Collect host information. Never raises."""
     physical, logical = _cpu_counts()
+    plugged, battery = _power()
     return HostInfo(
         hostname=socket.gethostname(),
         os_name=platform.system(),
@@ -78,4 +95,6 @@ def probe_host() -> HostInfo:
         python_version=platform.python_version(),
         python_implementation=platform.python_implementation(),
         python_executable=sys.executable,
+        power_plugged=plugged,
+        battery_percent=battery,
     )
