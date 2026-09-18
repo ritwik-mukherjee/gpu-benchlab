@@ -6,6 +6,46 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added — Phase 3: PyTorch backend (ResNet-50)
+
+- **PyTorch backend** through the existing lifecycle. CPU path executed on real
+  hardware; CUDA path implemented and structurally tested, **not validated on NVIDIA
+  hardware** (the development machine has no NVIDIA GPU).
+- **No implicit device, no fallback.** `cuda:0` without CUDA is `status: unavailable`.
+- **Explicit precision.** Casting (not autocast); IEEE FP32 enforced via the
+  `fp32_precision` API because PyTorch defaults cuDNN convolutions to TF32; effective
+  settings recorded; output dtype verified by a sanity forward pass (ADR 0005).
+- **`CudaEventTimer`**: CUDA-event device time as the primary sample, synchronized
+  host time as a secondary series.
+- **Model registry** (ResNet-50: class `ResNet`, 25,557,032 parameters asserted) and
+  **pinned-weights verification** with the SHA-256 recorded on every result (ADR 0006).
+- `gpu-bench models list|fetch`; example configs for CPU FP32 and CUDA FP16.
+- **Contract changes:** `status: unavailable` is now producible; errors tagged with
+  the exact lifecycle phase; `validate(config, environment)`; `execution_context()`;
+  backend `settings` / `device_kind`; `model_info`; optional secondary timing;
+  validated `backend_options`. Result schema **1.1** (1.0 still loads).
+- **CPU labelling.** CPU results carry a note, a `cpu-` storage prefix and
+  `is_gpu_measurement == False`.
+- **Gross-anomaly flag.** A sample > 10× the run's median adds an `ANOMALY` note,
+  shown in the CLI; samples are never dropped. Added after a real run recorded a
+  627 s sample spanning a system suspend.
+- **Power source recorded** in the environment (`power_plugged`, `battery_percent`);
+  environment schema **1.1**.
+- `analysis/ab_weights_cpu.py`: stdlib-only re-derivation and comparison script.
+- Published evidence: `results/published/2026-09-18-phase3-cpu-resnet50/`.
+
+### Fixed
+
+- `.gitignore` rule `models/` also matched `src/gpu_benchlab/models/`; now anchored.
+- A run that never created a timer no longer claims `timing_mechanism: wall_clock`.
+- An OOM raised during `prepare()` was tagged phase `execute`.
+- The effective input shape was not recorded when `model.input_shape` was omitted.
+
+### Findings (documented, not fixed)
+
+- Within-run non-stationarity on the laptop CPU; cause unconfirmed.
+- The pinned-vs-random weights A/B experiment was inconclusive (confounded).
+
 ### Added — Phase 2: benchmark core
 
 - **Timing abstraction** with an explicit contract. The engine never synchronizes;

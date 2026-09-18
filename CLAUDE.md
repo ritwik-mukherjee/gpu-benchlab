@@ -145,6 +145,7 @@ Already-verified examples of things memory gets wrong (all verified 2026-09-18):
 | PyTorch CUDA wheels on PyPI | CUDA 13.0 is the PyPI default from the 2.11 series; other CUDA builds live on `download.pytorch.org/whl/cuXXX`. |
 | "FP32" in PyTorch means IEEE FP32 | **No.** `torch.backends.cudnn.allow_tf32` defaults to **True**, so FP32 convolutions on Ampere+ run as TF32. Set FP32 precision explicitly (`fp32_precision="ieee"`, PyTorch ≥ 2.9) and record it. |
 | `from_pretrained` loads FP32 | **Not since transformers v5.** Default is `dtype="auto"` (the saved dtype, e.g. BF16); `torch_dtype` is deprecated in favour of `dtype`. Always pass dtype explicitly and verify after load. |
+| The TF32 APIs can be mixed | **No.** After setting the new `fp32_precision` API, *reading* legacy `torch.backends.cudnn.allow_tf32` raises `RuntimeError` (observed on torch 2.14, even with conv and RNN both `"ieee"`). Use only the new API when present. |
 | `torch.onnx.export` uses the TorchScript exporter | Since PyTorch 2.9 it defaults to `dynamo=True`; use `dynamic_shapes` — `dynamic_axes` is deprecated. Record exporter mode and opset. |
 | `tie_word_embeddings: true` means the checkpoint stores one matrix | Qwen3 checkpoints store `lm_head.weight` separately anyway (verified from the safetensors index). On-disk size overstates tied in-memory size; runtimes may differ in whether they deduplicate. |
 

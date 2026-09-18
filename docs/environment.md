@@ -39,6 +39,11 @@ As of the 2.11 series, the wheels published to PyPI target **CUDA 13.0**:
 uv pip install torch
 ```
 
+**Measured on the development machine (2026-09-18):** the CPU build
+(`--index-url https://download.pytorch.org/whl/cpu`) installed `torch 2.14.0+cpu` and
+`torchvision 0.29.0+cpu`. Download ≈ 136 MiB (torch 118.3 MiB, torchvision 1.3 MiB, plus
+sympy, pillow, networkx, setuptools); 511.9 MB added to site-packages; 175 s.
+
 For a different CUDA build, use PyTorch's own index:
 
 ```bash

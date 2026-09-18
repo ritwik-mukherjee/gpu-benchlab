@@ -289,3 +289,110 @@ weight-driven vs KV-driven decode cost.
   in `prepare()`.
 
 Both are scheduled as step 1 of Phase 3.
+
+---
+
+## 2026-09-18 — Phase 3: PyTorch backend (ResNet-50)
+
+### Environment
+
+Unchanged hardware: Intel Core i7-8565U, no NVIDIA GPU. Installed CPU builds
+`torch 2.14.0+cpu` and `torchvision 0.29.0+cpu` (≈ 136 MiB download, 511.9 MB on disk).
+
+**Everything below is one of: real CPU measurement, simulated, or CUDA code tested
+only against fakes. No NVIDIA hardware measurement exists.**
+
+### What was built
+
+- Contract changes applied before the backend (schema 1.1): `unavailable` status,
+  exact error phases, environment passed to `validate`, `execution_context()` hook,
+  effective backend settings, `model_info` with weights SHA-256, optional secondary
+  timing, validated `backend_options`, model registry.
+- `PyTorchBackend` (CPU + CUDA), `CudaEventTimer`, `gpu-bench models list|fetch`.
+- Closing fixes from review: gross-anomaly flag, power-source recording, effective
+  input-shape recording, anomaly shown in the CLI.
+
+### Findings from the installed torch (flag behaviour, verified without a GPU)
+
+1. `torch.backends.cudnn.conv.fp32_precision` defaults to `"tf32"`, confirming the
+   documented TF32 trap on this build.
+2. After using the new `fp32_precision` API, reading legacy `cudnn.allow_tf32`
+   raises `RuntimeError` — even with conv and RNN both `"ieee"`. The backend uses
+   only the new API; restoring the snapshot makes legacy reads work again.
+
+### Real CPU measurement (P0)
+
+ResNet-50, IEEE FP32, batch 1, pinned `IMAGENET1K_V2` (SHA-256 `11ad3fa6…`), 10 warmup +
+100 measured, on AC power, clean git tree at `1f153b9`:
+
+```
+p50 101.6 ms   mean 104.1 ms   stdev 18.8 ms   min 68.1   max 150.6   (p95/p99 low confidence)
+throughput 9.61 samples/sec (both formulas agree)
+```
+
+All nine statistics re-derived from `raw.json` with the stdlib + a hand-written
+percentile; all matched to 1e-9. **This is CPU inference on a laptop. It is not GPU
+performance and is published only as methodology evidence.**
+
+**Harness overhead (first real measurement):** loop wall time minus sum of samples =
+0.375 ms / 100 iterations = 3.7 µs per iteration *between* timed windows.
+
+**Observed non-stationarity:** block means (20 iterations) ≈ 89, 88, 118, 114, 111 ms.
+The 10 warmup samples (80–99 ms) were all in the faster regime. *Possible
+explanation:* turbo / power-limit transition. **Cause unconfirmed** — no clock or
+power telemetry was recorded.
+
+### A/B experiment: pinned vs random weights — INCONCLUSIVE
+
+Design: alternating P1, R1, P2, R2 (10 + 100 iterations each).
+
+| Run | p50 | mean | stdev | Notes |
+|---|---|---|---|---|
+| P1 | 119.1 | 6514.5 | 62698.1 | AC → battery mid-run; **iteration 79 = 627,219.9 ms** |
+| R1 | 188.7 | 197.9 | 46.9 | battery, after resume |
+| P2 | 223.8 | 310.4 | 268.0 | battery, after resume; 1.2–1.9 s outliers |
+| R2 | 216.4 | 235.7 | 89.0 | battery, after resume |
+
+Windows System log: power source change (`AcOnline=false`) at 05:00:20, S3 sleep
+at 05:00:25, resume with the clock corrected from 05:00:27 to 05:10:54 — a 627 s gap
+equal to P1's iteration 79. `perf_counter_ns` counted through the suspend.
+
+Difference in mean per-run p50 (random − pinned) = +31.1 ms; the pinned arm's own
+run-to-run range is 104.7 ms. With two runs per arm, one ordering, a power change and
+a suspend, **no conclusion is justified** — not that weights matter, not that they
+don't. No significance test was computed because the design cannot support one.
+Evidence preserved in `results/published/2026-09-18-phase3-cpu-resnet50/`.
+
+### Observations
+
+1. **A clean-looking `ok` result can contain a 10-minute suspend.** Nothing in the
+   Phase 2 schema flagged it; the mean became 6.5 s. Fixed with a loose anomaly flag
+   (samples kept, never dropped). The flag deliberately does not catch P2's 5–8×
+   outliers — it is a tripwire, not a stationarity test.
+2. **The biggest confounder was invisible in the results.** Power source was only
+   found via the OS event log. Now recorded in the environment.
+3. **Iteration-count warmup is not evidence of steady state** on this machine. The
+   same class of problem (boost/power/thermal limits) exists on GPUs.
+4. Reviewing the implementation line by line found a real provenance gap: when the
+   config omitted `input_shape`, the executed shape was recorded nowhere. Fixed.
+
+### Deviations from the Phase 3 plan
+
+- `torch.OutOfMemoryError` needed no special mapping: its class name is already
+  `OutOfMemoryError`, and with exact phase tagging the generic path records it
+  correctly. `execute()` stays a single line.
+- Weights are fetched in `validate()` (untimed), so a first-run download cannot
+  inflate `model_load_ms`.
+- Two additions not in the plan, both driven by real data: the anomaly flag and
+  power-source recording.
+
+### What remains unverified (needs NVIDIA hardware)
+
+NVML success path; PyTorch CUDA validation against a real driver; `CudaEventTimer`
+placement for real asynchronous work; whether `"ieee"` really prevents TF32 kernel
+selection; `cudnn.benchmark` warmup needs; real OOM; the legacy-TF32 branch
+(torch < 2.9, untested anywhere).
+
+### Next
+
+Awaiting approval for Phase 4. See the Phase 3 report for the recommendation.

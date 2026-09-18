@@ -1,12 +1,12 @@
 # Benchmark methodology
 
-> **Status:** §§1-6 and §10 are **implemented** in `gpu_benchlab.core` as of Phase 2
-> and covered by tests. §§7-9 (repeats, telemetry sampling, framework overhead) are
-> specified but not yet implemented.
+> **Status (end of Phase 3):** §§1–6, §10 and §12 are **implemented** and tested.
+> §9 has its first real measurement (inter-iteration harness overhead, CPU). §§7–8
+> (repeats, telemetry sampling) are specified but not implemented.
 >
-> Nothing here has produced a *measurement* yet. The engine has so far only driven a
-> simulated backend, which returns scripted numbers and is marked as such. See
-> [limitations.md](limitations.md) §2b for exactly what remains unproven.
+> The only real measurements so far are **CPU** runs on a laptop with no NVIDIA GPU.
+> **No GPU measurement exists.** The CUDA timing path is implemented but unverified on
+> hardware. See [limitations.md](limitations.md) §0 for the four kinds of evidence.
 
 The purpose of this document is to let a sceptical reader decide whether to believe
 any number this project eventually publishes.
@@ -28,6 +28,11 @@ Two separate corrections are required:
 1. **Use a monotonic clock.** `time.time()` is a wall clock subject to NTP
    adjustment and, on some platforms, coarse resolution. Use
    `time.perf_counter_ns()`.
+
+   A monotonic clock is not an "awake" clock. **Observed on Windows 11 (2026-09-18):**
+   `perf_counter_ns` kept counting through an S3 system sleep, so one iteration was
+   recorded as 627,219.9 ms. The engine cannot tell a suspend from a slow iteration;
+   it flags samples > 10× the run's median as anomalies instead (§12).
 2. **Synchronize.** The host must wait for the device before stopping the clock.
 
 Even done correctly, host-side timing includes launch overhead and synchronization
@@ -38,7 +43,8 @@ report them separately rather than picking a favourite.
 
 | Backend | Primary | Secondary | Notes |
 |---|---|---|---|
-| PyTorch | `torch.cuda.Event` elapsed time | `perf_counter_ns` + `torch.cuda.synchronize()` | Events measure device time; the wall clock captures end-to-end cost including Python overhead. |
+| PyTorch, CUDA | `torch.cuda.Event` elapsed time on the execution stream (`cuda_event`) | synchronized host `perf_counter_ns` (`wall_clock_synchronized`) | Implemented, **unverified on hardware**. Device sync before each start event, end-event sync before reading. Event time includes any idle gaps caused by slow kernel launch. |
+| PyTorch, CPU | `perf_counter_ns`, no sync (`wall_clock`) | — | PyTorch CPU ops have completed when the call returns, so there is nothing to synchronize and the mechanism says so. |
 | ONNX Runtime | `perf_counter_ns` around `run()` | ORT profiling where enabled | ORT synchronizes internally before returning. The **execution provider is recorded** — a CUDA-EP result and a TensorRT-EP result are not interchangeable. |
 | TensorRT | CUDA events on the execution stream | `perf_counter_ns` + stream sync | Engine build and engine load are measured separately and never included. |
 | TensorRT-LLM | per-token timestamps | — | TTFT and inter-token latency require timestamps inside generation, not around it. |
@@ -74,6 +80,9 @@ inference latency.** A tool that gets this wrong makes TensorRT look catastrophi
 slow on the first run and impossibly fast afterwards.
 
 ## 4. Warmup
+
+> **First real evidence (CPU, 2026-09-18):** an iteration-count warmup did not reach a
+> stationary state. See §12. The defaults below are still a hypothesis.
 
 The first iterations of any GPU workload are not representative. They include
 CUDA context initialization, kernel autotuning and algorithm selection (notably
@@ -176,8 +185,11 @@ so host-to-device transfer is not silently counted as inference — unless the
 experiment explicitly asks for end-to-end measurement, in which case it is recorded
 as such.
 
-Python interpreter overhead is itself measurable and will be characterised (empty-loop
-baseline) once the engine exists, so it can be reported rather than assumed negligible.
+**First measurement (CPU, 2026-09-18):** the loop's wall time minus the sum of its
+per-iteration samples was 0.375 ms over 100 iterations — 3.7 µs per iteration between
+timed windows, against ≈ 100 ms samples. This measures only the harness overhead
+*between* iterations; overhead *inside* each timed window (timer start/stop cost)
+is not yet measured, and an empty-backend baseline is still to be done.
 
 ## 10. Comparisons
 
@@ -194,7 +206,48 @@ speedup = baseline_latency_p50 / candidate_latency_p50
 
 No derived metric is ever hard-coded, cached into documentation, or written by hand.
 
-## 11. Known threats to validity
+## 11. Precision on PyTorch (implemented, Phase 3)
+
+Precision means explicit casting of weights and inputs; `torch.autocast` (mixed
+precision) is not used. FP32 means IEEE FP32: PyTorch's default is
+`cudnn.conv.fp32_precision == "tf32"` (observed on torch 2.14), which would run
+"FP32" convolutions as TF32 on Ampere and newer. The backend sets conv, RNN and
+matmul FP32 precision explicitly on every run and records the effective values.
+`tf32` is a separate, explicitly requested precision. Rationale: [ADR 0005](decisions/0005-precision-and-tf32.md).
+
+The sanity forward pass verifies the output dtype, shape and finiteness before
+any timing starts. It does not verify which kernels ran.
+
+## 12. Stationarity and anomalies (observed on CPU, Phase 3)
+
+The only real workload measured so far is ResNet-50 FP32, batch 1, on the laptop CPU.
+
+**Observed non-stationarity.** In a clean AC-powered run, the mean of consecutive
+20-iteration blocks was ≈ 89, 88, 118, 114, 111 ms: a step change around iteration
+40, after the 10 warmup iterations (80–99 ms) had already finished. The reported p50
+(101.6 ms) therefore blends two regimes. *Possible explanation:* a turbo /
+power-limit transition on a 15 W mobile CPU. **The cause is unconfirmed** — no clock,
+power or thermal telemetry was recorded. GPUs have analogous behaviours (boost
+clocks, power and thermal limits), so this must be checked on GPU runs, not assumed
+away.
+
+Consequences, until Phase 6 telemetry and a drift check exist:
+
+- An iteration-count warmup is **not evidence of steady state**. Inspect the raw
+  samples in blocks before trusting a single-run p50.
+- **Single runs are not enough** on machines with variable clocks. Repeats (§7) are
+  needed, and between-run variation must be reported.
+- **Power source is recorded** (`host.power_plugged`, `battery_percent`) from
+  environment schema 1.1. It was a confounder in the Phase 3 A/B experiment and was
+  invisible in the results until then.
+
+**Anomaly flag.** A measured sample more than `ANOMALY_FACTOR = 10` times the run's
+median adds an `ANOMALY` note to the result, shown in the CLI as "SUSPECT RUN". Such
+samples are kept, never dropped, because they are real clock readings — they are
+just not inference. The threshold is deliberately loose: it catches suspends and
+debugger pauses, not ordinary tail latency, and it will miss moderate disturbances.
+
+## 13. Known threats to validity
 
 Tracked openly, and to be quantified rather than hand-waved once measurement is possible:
 

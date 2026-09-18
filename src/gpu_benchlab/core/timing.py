@@ -42,9 +42,9 @@ synchronization hook. It covers the CPU case (no hook) and the
 "synchronize then stop the host clock" case (hook supplied) without knowing
 anything about CUDA.
 
-A CUDA-event timer belongs with the backend that owns the stream, and arrives in
-Phase 3 with the PyTorch backend. :class:`TimingMechanism` already names it so the
-schema does not need to change when it does.
+A CUDA-event timer belongs with the backend that owns the stream: see
+``gpu_benchlab.backends.pytorch.CudaEventTimer`` (implemented in Phase 3, not yet
+validated on NVIDIA hardware).
 """
 
 from __future__ import annotations
@@ -81,7 +81,9 @@ class TimingMechanism(str, Enum):
     CUDA_EVENT = "cuda_event"
     """CUDA events recorded on the execution stream — device time only.
 
-    Excludes host-side launch overhead. Not implemented until Phase 3.
+    Includes any idle gaps on the stream between the two events (e.g. slow kernel
+    launch), so it is not the sum of kernel durations. Implemented by the PyTorch
+    backend; unverified on real NVIDIA hardware.
     """
 
     SCRIPTED = "scripted"

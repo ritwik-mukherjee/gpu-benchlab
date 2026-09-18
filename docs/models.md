@@ -1,7 +1,8 @@
 # Benchmark model selection
 
-- **Status:** Selected. **Not yet benchmarked.** Nothing in this document is a
-  performance measurement.
+- **Status:** Selected. ResNet-50 is implemented and has run **on CPU only**
+  (methodology evidence, not performance data). **No GPU benchmark of any model
+  exists.** Nothing in this document is a performance measurement.
 - **Researched:** 2026-09-18, against the sources linked in §9.
 - **Scope:** the initial suite for PyTorch (Phase 3), ONNX Runtime (Phase 4),
   TensorRT (Phase 5) and TensorRT-LLM (Phase 10).
@@ -370,8 +371,11 @@ Phase 6 will measure.
 ## 8. Open questions
 
 - **Do random and trained ResNet-50 weights cost the same to execute on CPU?**
-  Denormal values could make them differ. Until measured, only pinned-weight runs are
-  reportable.
+  Denormal values could make them differ. **Attempted 2026-09-18, inconclusive**: the
+  alternating A/B runs were confounded by a mid-experiment switch to battery power
+  and a system suspend (evidence in `results/published/2026-09-18-phase3-cpu-resnet50/`,
+  analysis in `analysis/ab_weights_cpu.py`). Until re-run under controlled
+  conditions, only pinned-weight runs are reportable.
 - **Do transformers and TensorRT-LLM both tie Qwen3's `lm_head`?** If not, their VRAM
   numbers differ by ~0.6 GB for reasons unrelated to runtime efficiency.
 - **What does TensorRT's builder do with TF32 by default?** It needs checking against

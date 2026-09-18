@@ -6,12 +6,12 @@ acceleration stacks — PyTorch, ONNX Runtime, TensorRT and TensorRT-LLM.**
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 
-> **Status: early development — Phase 2 of 12.**
-> Environment detection and the benchmark core (timing, warmup, statistics, result schema,
-> storage) are implemented and tested. No real inference backend exists yet — the core has
-> so far only driven a *simulated* backend used to test the framework itself.
-> This repository contains **no performance measurements**, because none have been produced.
-> When it does, every number in it will be traceable to a stored raw result.
+> **Status: early development — Phase 3 of 12.**
+> Environment detection, the benchmark core and a PyTorch backend (ResNet-50) are
+> implemented and tested. The development machine has **no NVIDIA GPU**: the PyTorch CPU
+> path has run on real hardware, but the CUDA path is implemented and only structurally
+> tested. **This repository contains no GPU performance measurements.** The only real
+> measurements are CPU runs, published as methodology evidence and labelled as CPU results.
 
 ---
 
@@ -73,16 +73,20 @@ Timing and validity methodology: [docs/methodology.md](docs/methodology.md).
 | Backend | Status | Notes |
 |---|---|---|
 | Simulated (`fake`) | Implemented | **Produces no measurements.** Seeded random latency model for testing the framework on a GPU-less machine. |
-| PyTorch (CUDA) | Planned — Phase 3 | CUDA-event timing |
+| PyTorch | Implemented (Phase 3) | CPU: executed on real hardware. CUDA: implemented, **unverified on NVIDIA hardware**. CUDA-event timing, explicit precision, IEEE FP32 enforced. |
 | ONNX Runtime | Planned — Phase 4 | Execution provider recorded explicitly |
 | TensorRT | Planned — Phase 5 | Engine build time measured separately |
 | TensorRT-LLM | Planned — Phase 10 | TTFT, inter-token latency, tokens/sec |
 
 ## 5. Supported models
 
-Not yet selected. Model selection is a Phase 3 deliverable and will be documented — with the
-reasoning for each choice — in `docs/models.md`. The repository will not commit model weights;
-fetch scripts will be provided instead.
+| Model | Role | Status |
+|---|---|---|
+| ResNet-50 (torchvision v1.5, weights `IMAGENET1K_V2` pinned and SHA-256 verified) | Primary vision | Implemented |
+| Qwen3-1.7B / Qwen3-0.6B | Primary / secondary LLM | Selected for Phase 10 |
+
+Reasoning, rejected candidates and sources: [docs/models.md](docs/models.md). Weights are never
+committed; `gpu-bench models fetch resnet50` downloads and verifies them.
 
 ## 6. Hardware requirements
 

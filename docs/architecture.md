@@ -68,7 +68,11 @@ src/gpu_benchlab/
         errors.py       exception taxonomy -> result status
     backends/      one module per inference runtime
         fake.py         simulated backend (framework testing only)
-        (pytorch, onnxruntime, tensorrt, tensorrt_llm: Phases 3-5, 10)
+        pytorch.py      eager PyTorch, CPU + CUDA; CudaEventTimer (Phase 3)
+        (onnxruntime, tensorrt, tensorrt_llm: Phases 4-5, 10)
+    models/        Phase 3 — model registry and pinned-weights verification
+        registry.py     name -> architecture, expected params, shapes, pinned weights
+        weights.py      stdlib download + SHA-256 verification
     telemetry/     Phase 6 — NVML sampling during a run
     experiments/   Phase 7 — config parsing, matrix expansion, runner
     compare/       Phase 8 — baselines and derived metrics

@@ -1,6 +1,6 @@
 # Phase 3 plan — PyTorch backend
 
-- **Status:** Proposed. Not implemented.
+- **Status:** Implemented (Phase 3 closed 2026-09-18). CPU path executed on real hardware; CUDA path structurally tested only. Deviations from this plan are recorded in ENGINEERING_LOG.md.
 - **Depends on:** [models.md](../models.md) (ResNet-50 selected as the primary vision model).
 - **Out of scope:** CUDA-specific runtimes other than PyTorch, ONNX Runtime, TensorRT,
   TensorRT-LLM, and LLM generation. The LLM path does **not** go through this backend

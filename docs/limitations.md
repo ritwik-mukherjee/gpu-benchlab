@@ -3,7 +3,23 @@
 This document exists so that no reader has to guess what has actually been verified.
 It is updated whenever something is implemented but not executed on real hardware.
 
-Last updated: 2026-09-18 (end of Phase 2).
+Last updated: 2026-09-18 (end of Phase 3).
+
+---
+
+## 0. The four kinds of evidence in this repository
+
+Every claim about this tool falls into exactly one of these. They must never be
+blurred.
+
+| | Kind | Exists? | Where |
+|---|---|---|---|
+| **A** | **Real CPU measurements** | Yes | PyTorch ResNet-50 on the development laptop's CPU. Evidence: `results/published/2026-09-18-phase3-cpu-resnet50/`. Stamped `device_kind: cpu`, stored under `cpu-` prefixes, carry a CPU note. **Not GPU performance.** |
+| **B** | **Simulated measurements** | Yes | The `fake` backend. Stamped `is_simulated: true`, `timing_mechanism: scripted`, `sim-` prefixes. **Not measurements of anything.** |
+| **C** | **CUDA functionality: implemented, only fake/structurally tested** | Yes | NVML success path, PyTorch CUDA validation, `CudaEventTimer`. Tested against patched CUDA queries and fake event/NVML APIs. **Never executed on NVIDIA hardware.** |
+| **D** | **NVIDIA hardware measurements** | **No** | None exist. No GPU performance claim of any kind can be made from this repository today. |
+
+The development machine (Intel Core i7-8565U, Intel UHD 620 only) has **no NVIDIA GPU**.
 
 ---
 
@@ -11,91 +27,108 @@ Last updated: 2026-09-18 (end of Phase 2).
 
 | Item | Verified how |
 |---|---|
-| Package installs on Python 3.12 (Windows) | `uv pip install -e ".[dev]"` |
-| `gpu-bench hardware` runs end to end | Executed; output in [environment-report.md](environment-report.md) |
-| `gpu-bench doctor` runs | Executed |
-| Host/CPU/RAM/Python detection | Executed; values cross-checked against Windows CIM |
+| Package installs on Python 3.10 and 3.12 (Windows) | `uv pip install -e ".[dev]"` |
+| Install and test suite **without torch** | Separate venv: all non-torch tests pass, torch tests skip, a `pytorch` config yields `status: unavailable` |
+| `gpu-bench hardware` / `doctor` | Executed; output in [environment-report.md](environment-report.md) |
+| Host / CPU / RAM / Python / **power source** detection | Executed; power reading matched `Win32_Battery` |
 | NVML *absence* handling | Executed on a machine with genuinely no NVIDIA driver |
-| `driver_unavailable` vs `no_nvidia_device` distinction | Unit-tested with fakes; the `driver_unavailable` branch also confirmed on real hardware |
-| Compute-capability → architecture/precision matrix | 55 unit tests against documented capabilities of real GPUs |
-| Schema JSON round-trip | Unit-tested |
-| CLI exit codes | Integration-tested |
-| `ruff check`, `ruff format`, `mypy --strict` | All clean |
-| Test suite | 229 tests, all passing on Python 3.10 and 3.12 |
-| Timing abstraction | `WallClockTimer` executed with real sleeps; sync hook call order asserted |
-| Latency statistics | Hand-computed known answers, plus stored values re-derived independently from `raw.json` with the stdlib |
-| Phase separation | Verified with a backend whose engine build really costs 60ms: latency statistics byte-identical to the no-build run |
-| Engine failure paths | OOM, unsupported precision, load/build/execute failure and NaN samples all produce results, not exceptions |
-| Result schema | JSON round-trip, float-exact raw sample preservation |
-| Storage | Four files written, all carrying `is_simulated`; corrupt-result resilience |
-| `gpu-bench run` end to end | Executed; sample output committed under `examples/sample-output/` |
+| Compute-capability → precision matrix | Unit tests against documented capabilities of real GPUs |
+| Timing abstraction (`WallClockTimer`) | Real sleeps; sync-hook call order asserted |
+| Latency statistics | Hand-computed known answers; stored values re-derived from `raw.json` with the stdlib, for both simulated and real CPU runs |
+| Phase separation | Backend with a real 60 ms engine build: latency statistics byte-identical to the no-build run |
+| Error status / phase mapping | `unsupported`, `unavailable`, `failed` produced and tagged with the exact lifecycle phase |
+| **PyTorch CPU path, ResNet-50** | Real inference executed: class name `ResNet`, 25,557,032 parameters, pinned weights SHA-256 `11ad3fa6…` verified, IEEE FP32 applied and recorded, sanity forward pass, `inference_mode` active for every iteration |
+| **`device: cuda:0` on a machine without CUDA** | Genuine `status: unavailable` in phase `validate`; model never built; no CPU fallback |
+| TF32 / FP32-precision flag behaviour on torch 2.14 | Observed on the installed build (flags are settable without a GPU): default `cudnn.conv.fp32_precision == "tf32"`; reading legacy `allow_tf32` after using the new API raises; snapshot-and-restore returns the exact original state |
+| Process-global torch state restoration | Tested after success and after failure |
+| Result schema 1.1, 1.0 compatibility | A committed Phase 2 (schema 1.0) result still loads |
+| Gross-anomaly flag | Regression test, and applied to the real stored runs: flags exactly the run containing a system suspend |
 
-## 2. What has NOT been executed on real hardware
+## 2. What has NOT been executed on real NVIDIA hardware (category C)
 
-**The development machine has no NVIDIA GPU** (see
-[environment-report.md](environment-report.md)). The following are therefore
-implemented-and-unit-tested but **never run against a real driver**:
+Implemented and structurally tested; **unverified**.
 
-| Item | Status |
-|---|---|
-| NVML *success* path (`DetectionStatus.OK`) | Tested only against an injected fake NVML module. The real NVML call signatures have not been exercised. |
-| GPU field extraction (UUID, VRAM, clocks, power, temperature) | Same — fake-tested only. |
-| `nvmlDeviceGetNumGpuCores` availability | Not confirmed against a real driver; this call is newer than most of the NVML surface and may be unsupported on some drivers. It is guarded, so a failure degrades to `None`. |
-| Multi-GPU enumeration | Fake-tested only. |
-| PyTorch / ONNX Runtime / TensorRT probes returning *positive* results | Only the "not installed" branch has run. |
+| Item | How it was tested | What is unknown |
+|---|---|---|
+| NVML success path (`DetectionStatus.OK`) and GPU field extraction | Injected fake NVML module | Real call signatures, bytes-vs-str returns, `nvmlDeviceGetNumGpuCores` availability |
+| Multi-GPU enumeration | Fake | Everything real |
+| PyTorch CUDA validation (build / availability / index / capability → precision) | torch's CUDA queries patched | Behaviour against a real driver; NVML-vs-CUDA device ordering |
+| **`CudaEventTimer`** | Fake event/stream API: call order, primary = event time, host time secondary | **Whether event placement is correct for real asynchronous CUDA work.** Whether the captured stream is the one kernels actually run on. Event resolution and overhead on real hardware. |
+| CUDA FP16 / BF16 / TF32 execution | Not executed | The sanity check confirms the output dtype, not which kernels ran. Whether tensor-core kernels were selected (and whether `"ieee"` really disables TF32 on a real GPU) is unverified. |
+| `cudnn.benchmark` autotuning during warmup | Not executed | How many warmup iterations autotuning actually needs |
+| `torch.cuda.synchronize`, `empty_cache` calls | Not executed (the only unexercised lines in the backend apart from the legacy-TF32 branch) | — |
+| GPU memory, OOM on a real device | torch OOM mapping tested with a raised `torch.OutOfMemoryError` | Real OOM behaviour and recovery |
+| Legacy `allow_tf32` branch (torch < 2.9) | **Not tested at all** — the installed torch has the new API | Whether the fallback works |
 
-**This is the highest-priority thing to validate** the first time the tool runs on a
-real NVIDIA machine. Until then, treat the GPU-present path as plausible but unproven.
+**Semantics of CUDA-event time, stated so it is not misread later.** The primary
+CUDA sample is device time between two events on the stream. If the host launches
+kernels more slowly than the GPU executes them, idle gaps are *inside* that
+interval. It is therefore not "sum of kernel durations". Launch-bound workloads
+(small models, small batches) will show this, and the secondary host-time series
+exists so the gap can be quantified rather than assumed.
 
-## 2b. What Phase 2 has NOT validated
+## 3. CPU measurements on this machine — what they can and cannot support (category A)
 
-The benchmark core has only ever driven the **simulated** backend. That backend
-returns scripted numbers from a seeded generator, so the following remain unproven:
+- **They are real** and correctly labelled. They measure this laptop's CPU.
+- **They are never GPU data** and must not be compared with GPU results as a
+  speedup. `BenchmarkResult.is_gpu_measurement` is `False` for all of them.
+- **Observed non-stationarity within a single run.** In the clean AC-powered run
+  (P0), iterations 0–39 averaged ≈ 88 ms and iterations 40–99 averaged ≈ 111–118 ms.
+  The 10 warmup samples (80–99 ms) sit in the faster regime, so a fixed
+  10-iteration warmup did **not** reach a stationary state, and the run's p50
+  blends two regimes. *Possible explanation:* a turbo / package-power-limit
+  transition on this 15 W mobile CPU. **Cause unconfirmed** — no clock, power or
+  thermal telemetry was recorded.
+- **Power source is a plausible confounder and was not recorded before Phase 3's
+  close.** The three runs made entirely on battery (R1, P2, R2) were slower than the
+  AC run (per-run p50 ≈ 189–224 ms vs ≈ 102 ms), but all three also ran after a
+  system resume, so battery power and post-resume state **cannot be separated**
+  from this data. From now on the environment records `power_plugged` and
+  `battery_percent`; runs before that field existed do not carry it.
+- **System suspend is counted as latency.** `time.perf_counter_ns` kept counting
+  through an S3 sleep, producing a single 627,219.9 ms sample. The engine now
+  attaches an `ANOMALY` note to any run with a sample > 10× its median and the CLI
+  shows it; the sample is kept, not dropped. The 10× threshold is a loose
+  heuristic: it will not catch moderate disturbances (e.g. the 5–8× outliers seen
+  after resume).
 
-| Item | Status |
-|---|---|
-| The `Timer` contract against a real asynchronous runtime | Unproven. `WallClockTimer` is tested with `time.sleep`, which is synchronous. Whether the synchronize hook is placed correctly for real CUDA work cannot be established without a GPU. |
-| `TimingMechanism.CUDA_EVENT` | **Not implemented.** Declared in the enum only, so the schema does not change when Phase 3 adds it. |
-| Measurement-loop overhead | Unquantified. The loop is written to be bare, but the harness's own cost has not been measured against a real workload. An empty-loop baseline is planned. |
-| Real `model_load` / `engine_build` costs | Only simulated via `time.sleep`. |
-| Throughput against a real workload | The mean-latency figure is arithmetic and correct; the observed-throughput figure has never been emitted, because it is suppressed under scripted timing. |
+## 4. Not yet implemented
 
-**No performance data exists in this repository.** The only results produced so far
-are simulated and marked as such in five independent places.
+Phases 4–12: ONNX Runtime, TensorRT, telemetry sampling during runs, the experiment
+runner (matrices, repeats), the comparison engine, dashboard, reports, and the LLM
+generation path. See [roadmap.md](roadmap.md).
 
-## 3. Not yet implemented
+## 5. Platform limitations
 
-Phases 3–12. Specifically: every real backend, telemetry sampling, the experiment
-runner, the comparison engine, the dashboard and report generation.
-See [roadmap.md](roadmap.md).
+- **TensorRT-LLM is Linux-first.** Not expected to work on native Windows.
+- **Windows GPU telemetry is narrower than Linux.** Unavailable NVML fields degrade
+  to `null`, never `0`.
+- **WSL2 GPU passthrough** requires a WSL-capable Windows NVIDIA driver; NVML inside
+  WSL2 has historically had reduced functionality.
 
-## 4. Platform limitations
+## 6. Methodological caveats
 
-- **TensorRT-LLM is Linux-first.** It is not expected to work on native Windows.
-  The intended path is a Linux cloud GPU instance or WSL2 with GPU passthrough.
-- **Windows GPU telemetry is narrower than Linux.** Some NVML fields (notably power
-  limits and certain clock queries) are unavailable or restricted on Windows,
-  particularly on consumer cards. Every such field degrades to `null` rather than `0`.
-- **WSL2 GPU passthrough** requires a Windows NVIDIA driver with WSL support; NVML
-  inside WSL2 has historically had reduced functionality compared to native Linux.
+- **The 10-warmup / 100-iteration defaults remain an unvalidated hypothesis.** The
+  only real workload measured so far (CPU, above) shows that an iteration-count
+  warmup does not guarantee stationarity. A stationarity / drift check is needed
+  before any default can be called validated.
+- A p99 from 100 samples is not a stable statistic (methodology §6).
+- Whether random-init and pinned weights cost the same on CPU is **still unknown**:
+  the Phase 3 A/B experiment was inconclusive (see ENGINEERING_LOG 2026-09-18).
+  Until answered, only pinned-weight runs are reportable.
+- Single runs only. Repeats and between-run variance are not implemented yet
+  (Phase 7), and the A/B experiment showed run-to-run variation on this machine
+  larger than the effect being tested.
 
-## 5. Methodological caveats
-
-- The default warmup (10) and measurement (100) iteration counts are still a
-  **starting hypothesis, not an empirically validated constant**. The engine now
-  retains warmup samples so convergence *can* be analysed, but that analysis needs
-  a real workload and has not been done. See [methodology.md](methodology.md) §4.
-- A p99 computed from 100 samples is not a stable statistic. See methodology §6.
-- No model has been selected yet, so nothing is known about model-specific behaviour.
-
-## 6. Known open questions
+## 7. Known open questions
 
 - Whether each experiment should run in an isolated process, to prevent allocator
-  and autotune state leaking between configurations in a matrix run.
-- Whether the sample-standard-deviation choice (`ddof=1`) is the right default when
-  a user runs thousands of iterations and arguably has the population.
-- Whether percentile confidence thresholds should scale with observed variance
-  rather than being fixed counts.
-- Whether `nvmlDeviceGetNumGpuCores` is the right source for SM count, or whether
-  it should come from the CUDA runtime instead.
-- How to handle GPUs shared with a desktop compositor, where the baseline is not idle.
+  and autotune state leaking between configurations in a matrix run. (Torch global
+  flags are restored; allocator/autotune caches are not.)
+- How to detect non-stationarity robustly (block means? change-point test?) without
+  over-fitting to one machine.
+- Whether `ddof=1` is the right default at thousands of iterations.
+- Whether percentile confidence thresholds should scale with observed variance.
+- Whether `nvmlDeviceGetNumGpuCores` or the CUDA runtime should supply SM count.
+- How to handle GPUs shared with a desktop compositor.
+- Do transformers and TensorRT-LLM both deduplicate Qwen3's separately stored `lm_head`?
