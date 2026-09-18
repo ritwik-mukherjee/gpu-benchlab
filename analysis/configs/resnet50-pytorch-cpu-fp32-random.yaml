@@ -1,0 +1,22 @@
+# ResNet-50, eager PyTorch, on the HOST CPU, IEEE FP32.
+#
+# This produces REAL measurements of CPU inference. They are NOT GPU performance:
+# results are stamped device_kind: cpu, carry a CPU note, and are stored under a
+# `cpu-` prefixed directory. Never compare them with GPU results as a speedup.
+#
+# Weights: seeded RANDOM init (no download). Used only to test whether weight values
+# affect CPU latency (docs/models.md §8). Not a reportable configuration.
+
+name: resnet50-pytorch-cpu-fp32-random
+backend: pytorch
+device: cpu
+precision: fp32
+batch_size: 1
+
+model:
+  name: resnet50
+  weights: random
+
+benchmark:
+  warmup_iterations: 10
+  measurement_iterations: 100

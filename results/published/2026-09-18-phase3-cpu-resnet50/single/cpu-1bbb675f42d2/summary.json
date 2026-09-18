@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "1bbb675f42d2",
+  "status": "ok",
+  "is_simulated": false,
+  "backend": "pytorch",
+  "device_kind": "cpu",
+  "device": "cpu",
+  "precision": "fp32",
+  "batch_size": 1,
+  "timing_mechanism": "wall_clock",
+  "measures_steady_state": true,
+  "phases": {
+    "model_load_ms": 2616.163,
+    "engine_build_ms": 0.0016,
+    "prepare_inputs_ms": 98.8857,
+    "warmup_total_ms": 882.9034,
+    "measurement_total_ms": 10405.6504
+  },
+  "latency_ms": {
+    "count": 100,
+    "min_ms": 68.0654,
+    "max_ms": 150.6149,
+    "mean_ms": 104.052757,
+    "median_ms": 101.6251,
+    "stddev_ms": 18.83652234389275,
+    "p50_ms": 101.6251,
+    "p90_ms": 129.48898000000003,
+    "p95_ms": 144.25634,
+    "p99_ms": 150.396704,
+    "percentile_method": "linear",
+    "stddev_ddof": 1,
+    "low_confidence_percentiles": [
+      "p95",
+      "p99"
+    ]
+  },
+  "secondary_timing_mechanism": null,
+  "secondary_latency_ms": null,
+  "throughput": [
+    {
+      "value": 9.61050940726155,
+      "unit": "samples/sec",
+      "basis": "batch_size / mean_latency_s"
+    },
+    {
+      "value": 9.610163339717813,
+      "unit": "samples/sec",
+      "basis": "measurement_iterations * batch_size / measurement_total_s"
+    }
+  ],
+  "errors": [],
+  "notes": [
+    "CPU RESULT: measured on the host CPU. This is a real measurement of CPU inference, NOT GPU performance, and must never be compared with a GPU result as a speedup or presented as NVIDIA GPU data."
+  ]
+}
