@@ -6,6 +6,8 @@ taxonomy matters because the resulting status differs:
 
 * :class:`UnsupportedConfigurationError` -> ``status = unsupported`` (valid tool,
   invalid combination for this hardware/backend/model)
+* :class:`UnavailableError` -> ``status = unavailable`` (a required device,
+  runtime or artifact is not present on this machine)
 * :class:`OutOfMemoryError` -> ``status = failed`` (valid combination, ran out of
   memory — this is a *measurement*, not a crash)
 * :class:`BackendError` -> ``status = failed``
@@ -25,6 +27,7 @@ __all__ = [
     "ConfigurationError",
     "InvalidSampleError",
     "OutOfMemoryError",
+    "UnavailableError",
     "UnsupportedConfigurationError",
 ]
 
@@ -45,6 +48,23 @@ class UnsupportedConfigurationError(BenchLabError):
 
     Example: FP8 on a GPU whose compute capability is below 8.9. This is recorded
     as ``status = unsupported`` with a reason, never silently skipped.
+    """
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+class UnavailableError(BenchLabError):
+    """Something the configuration requires is not present on this machine.
+
+    Examples: ``device: cuda:0`` on a machine with no NVIDIA GPU, a CPU-only
+    PyTorch build asked to use CUDA, or weights that cannot be obtained.
+
+    Recorded as ``status = unavailable``. Deliberately distinct from ``failed``:
+    nothing was attempted and nothing broke -- the precondition was absent. It is
+    also never a trigger for fallback: a request for CUDA is never quietly run on
+    the CPU instead.
     """
 
     def __init__(self, reason: str) -> None:

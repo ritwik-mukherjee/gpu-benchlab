@@ -12,14 +12,57 @@ imports nothing from them, so the dependency runs backends -> core.
 
 from __future__ import annotations
 
+import contextlib
 from abc import ABC, abstractmethod
-from typing import Any
+from enum import Enum
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from gpu_benchlab.core.timing import Timer, WallClockTimer
 
-__all__ = ["Backend", "BackendDescriptor"]
+if TYPE_CHECKING:
+    from contextlib import AbstractContextManager
+
+    from gpu_benchlab.hardware.types import EnvironmentReport
+
+__all__ = ["Backend", "BackendDescriptor", "DeviceKind", "ModelInfo", "SettingValue"]
+
+SettingValue = str | int | float | bool | None
+
+
+class DeviceKind(str, Enum):
+    """What kind of device produced a result.
+
+    Stamped on every result so a CPU measurement can never be read as GPU
+    performance, and a simulated one never read as either.
+    """
+
+    CUDA = "cuda"
+    CPU = "cpu"
+    SIMULATED = "simulated"
+
+
+class ModelInfo(BaseModel):
+    """The model that actually ran, resolved to exact bytes.
+
+    ``configuration.model`` records what was *requested*; this records what was
+    *loaded*, so a result is traceable to a specific weights file.
+    """
+
+    model_config = ConfigDict(frozen=True, protected_namespaces=())
+
+    name: str
+    architecture: str = Field(description='Class that was instantiated, e.g. "ResNet".')
+    source: str | None = None
+    weights: str = Field(description='Pinned weights id, or "random".')
+    weights_url: str | None = None
+    weights_sha256: str | None = Field(
+        default=None, description="SHA-256 of the weights file that was loaded."
+    )
+    random_init_seed: int | None = None
+    parameter_count: int
+    expected_parameter_count: int
 
 
 class BackendDescriptor(BaseModel):
@@ -43,6 +86,18 @@ class BackendDescriptor(BaseModel):
         ),
     )
     device: str | None = Field(default=None, description='e.g. "cuda:0", "cpu".')
+    device_kind: DeviceKind | None = Field(
+        default=None, description="cuda / cpu / simulated. None only in schema-1.0 results."
+    )
+    settings: dict[str, SettingValue] = Field(
+        default_factory=dict,
+        description=(
+            "Every runtime setting that affects numerics or performance, recorded as "
+            "the EFFECTIVE value after it was applied -- never the requested value. "
+            "For PyTorch this includes dtype, TF32 / FP32-precision policy, "
+            "cudnn.benchmark, memory format, thread count and library versions."
+        ),
+    )
     is_simulated: bool = Field(
         default=False,
         description=(
@@ -59,14 +114,20 @@ class Backend(ABC):
 
     Lifecycle, driven by :class:`~gpu_benchlab.core.engine.BenchmarkEngine`::
 
-        backend.validate(config)     # raises UnsupportedConfigurationError if invalid
-        backend.load()               # timed as model_load
-        backend.build()              # timed as engine_build (may be a no-op)
+        backend.validate(config, env)  # unsupported / unavailable, before anything runs
+        backend.load()                 # timed as model_load
+        backend.build()                # timed as engine_build (may be a no-op)
         inputs = backend.prepare(config)
         timer = backend.make_timer()
-        ... warmup iterations ...
-        ... measured iterations ...
+        with backend.execution_context():
+            ... warmup iterations ...
+            ... measured iterations ...
         backend.close()
+        backend.descriptor / backend.model_info   # read AFTER the run
+
+    ``descriptor`` and ``model_info`` are read after the run, including after
+    ``close()``, because settings are only known once they have been applied.
+    Implementations must keep both valid after ``close()``.
 
     Implementations should raise
     :class:`~gpu_benchlab.core.errors.UnsupportedConfigurationError` from
@@ -78,18 +139,26 @@ class Backend(ABC):
     @property
     @abstractmethod
     def descriptor(self) -> BackendDescriptor:
-        """Identity and version of this backend."""
+        """Identity, version, device and effective settings of this backend."""
 
-    def validate(self, config: Any) -> None:
-        """Check the configuration can run here.
+    @property
+    def model_info(self) -> ModelInfo | None:
+        """The model actually loaded. ``None`` if nothing was loaded."""
+        return None
+
+    def validate(self, config: Any, environment: EnvironmentReport) -> None:
+        """Check the configuration can run here, before anything executes.
 
         Raises:
-            UnsupportedConfigurationError: if it cannot, with a reason.
+            UnsupportedConfigurationError: well-formed but invalid for this
+                hardware / backend / model (e.g. FP8 below SM 8.9).
+            UnavailableError: a required device, runtime or artifact is absent
+                (e.g. ``cuda:0`` with no NVIDIA GPU). Never fall back instead.
 
         The default accepts everything. Backends override to check precision
-        support, batch-size limits and model compatibility *before* execution,
-        so an invalid combination produces a clear ``unsupported`` result rather
-        than a confusing runtime error (PRD §32).
+        support, device availability and model compatibility *before* execution,
+        so an invalid combination produces a clear result rather than a confusing
+        runtime error (PRD §32).
         """
 
     def load(self) -> None:
@@ -125,6 +194,14 @@ class Backend(ABC):
         Must contain only the work being measured: no logging, no allocation, no
         telemetry. May return asynchronously -- the timer handles synchronization.
         """
+
+    def execution_context(self) -> AbstractContextManager[object]:
+        """Context the engine holds open around warmup AND measurement together.
+
+        Entered once, not per iteration, so its cost stays out of the timed
+        window. PyTorch uses it for ``torch.inference_mode()``. Default: nothing.
+        """
+        return contextlib.nullcontext()
 
     def synchronize(self) -> None:
         """Block until all outstanding device work has completed.

@@ -26,11 +26,11 @@ import traceback
 import uuid
 from collections.abc import Callable
 
-from gpu_benchlab.core.backend import Backend
+from gpu_benchlab.core.backend import Backend, DeviceKind
 from gpu_benchlab.core.config import ExperimentConfig
 from gpu_benchlab.core.errors import (
     InvalidSampleError,
-    OutOfMemoryError,
+    UnavailableError,
     UnsupportedConfigurationError,
 )
 from gpu_benchlab.core.provenance import capture_provenance
@@ -45,7 +45,7 @@ from gpu_benchlab.core.schema import (
     utc_now_iso,
 )
 from gpu_benchlab.core.statistics import LatencyStatistics
-from gpu_benchlab.core.timing import TimingMechanism, WallClockTimer
+from gpu_benchlab.core.timing import Timer, TimingMechanism, WallClockTimer
 from gpu_benchlab.hardware.detect import detect_environment
 from gpu_benchlab.hardware.types import EnvironmentReport
 
@@ -55,6 +55,12 @@ SIMULATION_WARNING = (
     "SIMULATED RESULT: produced by a simulated backend. These numbers exercise "
     "the benchmarking framework itself and are NOT measurements of any GPU, "
     "model or inference runtime. They must never be presented as performance data."
+)
+
+CPU_RESULT_NOTE = (
+    "CPU RESULT: measured on the host CPU. This is a real measurement of CPU "
+    "inference, NOT GPU performance, and must never be compared with a GPU result "
+    "as a speedup or presented as NVIDIA GPU data."
 )
 
 NO_WARMUP_WARNING = (
@@ -99,65 +105,119 @@ class BenchmarkEngine:
         group_id: str | None = None,
         repeat_index: int = 0,
     ) -> BenchmarkResult:
-        """Execute one experiment. Never raises."""
+        """Execute one experiment. Never raises.
+
+        Every error is recorded with the exact lifecycle phase it came from
+        (validate / load / build / prepare / warmup / measure / statistics / close).
+        """
         experiment_id = self._new_id()
-        descriptor = backend.descriptor
         phases = PhaseTimings()
         raw = RawSamples()
         errors: list[ErrorRecord] = []
-        notes: list[str] = []
 
-        if descriptor.is_simulated:
-            notes.append(SIMULATION_WARNING)
-        if config.benchmark.warmup_iterations == 0:
-            notes.append(NO_WARMUP_WARNING)
-
-        timing_mechanism = TimingMechanism.WALL_CLOCK
+        # None until a timer exists: a run that never timed anything must not
+        # claim a timing mechanism.
+        timing_mechanism: TimingMechanism | None = None
+        secondary_mechanism: TimingMechanism | None = None
         status = BenchmarkStatus.OK
         latency: LatencyStatistics | None = None
+        secondary_latency: LatencyStatistics | None = None
         throughput: list[ThroughputMetric] = []
 
+        phase = "validate"
         try:
-            backend.validate(config)
+            backend.validate(config, self.environment)
 
-            phases, inputs = self._setup(backend, config)
+            # Setup phases are one-off costs: a host clock plus the backend's own
+            # synchronization is the right instrument for them.
+            setup_timer = WallClockTimer(synchronize=backend.synchronize)
+
+            phase = "load"
+            setup_timer.start()
+            backend.load()
+            model_load_ms = setup_timer.stop()
+
+            phase = "build"
+            setup_timer.start()
+            backend.build()
+            engine_build_ms = setup_timer.stop()
+
+            phase = "prepare"
+            setup_timer.start()
+            inputs = backend.prepare(config)
+            prepare_ms = setup_timer.stop()
+
             timer = backend.make_timer()
             timing_mechanism = timer.mechanism
 
-            warmup_samples, warmup_total_ms = self._warmup(backend, timer, inputs, config)
-            measured, measurement_total_ms = self._measure(backend, timer, inputs, config)
+            with backend.execution_context():
+                phase = "warmup"
+                warmup_samples, warmup_total_ms = self._warmup(backend, timer, inputs, config)
+                warmup_secondary = timer.drain_secondary()
 
-            raw = RawSamples(latency_ms=measured, warmup_latency_ms=warmup_samples)
-            phases = phases.model_copy(
-                update={
-                    "warmup_total_ms": warmup_total_ms,
-                    "measurement_total_ms": measurement_total_ms,
-                }
+                phase = "measure"
+                measured, measurement_total_ms = self._measure(backend, timer, inputs, config)
+                measured_secondary = timer.drain_secondary()
+
+            phases = PhaseTimings(
+                model_load_ms=model_load_ms,
+                engine_build_ms=engine_build_ms,
+                prepare_inputs_ms=prepare_ms,
+                warmup_total_ms=warmup_total_ms,
+                measurement_total_ms=measurement_total_ms,
+            )
+            raw = RawSamples(
+                latency_ms=measured,
+                warmup_latency_ms=warmup_samples,
+                secondary_latency_ms=measured_secondary[1] if measured_secondary else [],
+                secondary_warmup_latency_ms=warmup_secondary[1] if warmup_secondary else [],
             )
 
+            phase = "statistics"
             latency = LatencyStatistics.from_samples(measured)
+            if measured_secondary is not None:
+                secondary_mechanism = measured_secondary[0]
+                secondary_latency = LatencyStatistics.from_samples(measured_secondary[1])
             throughput = self._throughput(latency, measurement_total_ms, config, timing_mechanism)
 
         except UnsupportedConfigurationError as exc:
             status = BenchmarkStatus.UNSUPPORTED
-            errors.append(self._error_record(exc, phase="validate"))
-        except OutOfMemoryError as exc:
-            # An OOM is a real finding about this batch size, not a tool crash.
-            status = BenchmarkStatus.FAILED
-            errors.append(self._error_record(exc, phase="execute"))
+            errors.append(self._error_record(exc, phase))
+        except UnavailableError as exc:
+            # A missing device or runtime. Nothing ran, nothing broke, and nothing
+            # is substituted: a CUDA request is never quietly run on the CPU.
+            status = BenchmarkStatus.UNAVAILABLE
+            errors.append(self._error_record(exc, phase))
         except InvalidSampleError as exc:
             # Timing data is untrustworthy, so no statistics may be reported from it.
             status = BenchmarkStatus.FAILED
-            errors.append(self._error_record(exc, phase="statistics"))
+            errors.append(self._error_record(exc, phase))
             latency = None
+            secondary_latency = None
         except Exception as exc:  # noqa: BLE001 - any backend failure becomes a result
+            # Includes OOM (ours and torch.OutOfMemoryError): a real finding about
+            # this configuration, recorded with the phase it happened in.
             status = BenchmarkStatus.FAILED
-            errors.append(self._error_record(exc, phase="run"))
+            errors.append(self._error_record(exc, phase))
         finally:
             try:
                 backend.close()
             except Exception as exc:  # noqa: BLE001
-                errors.append(self._error_record(exc, phase="close"))
+                errors.append(self._error_record(exc, "close"))
+
+        # Read after the run: effective settings only exist once applied.
+        descriptor = backend.descriptor
+        device_kind = descriptor.device_kind
+        if descriptor.is_simulated:
+            device_kind = DeviceKind.SIMULATED
+
+        notes: list[str] = []
+        if descriptor.is_simulated:
+            notes.append(SIMULATION_WARNING)
+        if device_kind is DeviceKind.CPU:
+            notes.append(CPU_RESULT_NOTE)
+        if config.benchmark.warmup_iterations == 0:
+            notes.append(NO_WARMUP_WARNING)
 
         return BenchmarkResult(
             experiment_id=experiment_id,
@@ -166,13 +226,17 @@ class BenchmarkEngine:
             timestamp_utc=utc_now_iso(),
             status=status,
             is_simulated=descriptor.is_simulated,
+            device_kind=device_kind,
             configuration=config,
             backend=descriptor,
+            model_info=backend.model_info,
             environment=self.environment,
             timing_mechanism=timing_mechanism,
+            secondary_timing_mechanism=secondary_mechanism,
             measures_steady_state=config.measures_steady_state,
             phases=phases,
             latency=latency,
+            secondary_latency=secondary_latency,
             throughput=throughput,
             raw_samples=raw,
             provenance=capture_provenance(),
@@ -182,39 +246,9 @@ class BenchmarkEngine:
 
     # -- phases ------------------------------------------------------------------------
 
-    def _setup(self, backend: Backend, config: ExperimentConfig) -> tuple[PhaseTimings, object]:
-        """Load, build and prepare inputs, timing each separately.
-
-        Uses a plain host clock plus the backend's own synchronization: these are
-        one-off setup costs where launch overhead is irrelevant, unlike the
-        per-iteration measurement.
-        """
-        setup_timer = WallClockTimer(synchronize=backend.synchronize)
-
-        setup_timer.start()
-        backend.load()
-        model_load_ms = setup_timer.stop()
-
-        setup_timer.start()
-        backend.build()
-        engine_build_ms = setup_timer.stop()
-
-        setup_timer.start()
-        inputs = backend.prepare(config)
-        prepare_ms = setup_timer.stop()
-
-        return (
-            PhaseTimings(
-                model_load_ms=model_load_ms,
-                engine_build_ms=engine_build_ms,
-                prepare_inputs_ms=prepare_ms,
-            ),
-            inputs,
-        )
-
     @staticmethod
     def _warmup(
-        backend: Backend, timer: object, inputs: object, config: ExperimentConfig
+        backend: Backend, timer: Timer, inputs: object, config: ExperimentConfig
     ) -> tuple[list[float], float]:
         """Run and time warmup iterations.
 
@@ -228,8 +262,8 @@ class BenchmarkEngine:
 
         samples: list[float] = []
         execute = backend.execute
-        start = timer.start  # type: ignore[attr-defined]
-        stop = timer.stop  # type: ignore[attr-defined]
+        start = timer.start
+        stop = timer.stop
 
         total = WallClockTimer()
         total.start()
@@ -243,7 +277,7 @@ class BenchmarkEngine:
 
     @staticmethod
     def _measure(
-        backend: Backend, timer: object, inputs: object, config: ExperimentConfig
+        backend: Backend, timer: Timer, inputs: object, config: ExperimentConfig
     ) -> tuple[list[float], float]:
         """The measurement loop.
 
@@ -255,8 +289,8 @@ class BenchmarkEngine:
         samples: list[float] = [0.0] * count
 
         execute = backend.execute
-        start = timer.start  # type: ignore[attr-defined]
-        stop = timer.stop  # type: ignore[attr-defined]
+        start = timer.start
+        stop = timer.stop
 
         total = WallClockTimer()
         total.start()

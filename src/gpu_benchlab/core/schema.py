@@ -17,13 +17,18 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from gpu_benchlab.core.backend import BackendDescriptor
+from gpu_benchlab.core.backend import BackendDescriptor, DeviceKind, ModelInfo
 from gpu_benchlab.core.config import ExperimentConfig
 from gpu_benchlab.core.statistics import LatencyStatistics
 from gpu_benchlab.core.timing import TimingMechanism
 from gpu_benchlab.hardware.types import EnvironmentReport
 
-RESULT_SCHEMA_VERSION = "1.0"
+# 1.1 (Phase 3) adds: device_kind, model_info, backend settings, secondary timing
+# and backend_options. All additive with defaults, so 1.0 results still load.
+# Bumped rather than left at 1.0 because a 1.1 config is NOT readable by 1.0 code
+# (ExperimentConfig forbids unknown keys) and a 1.0 reader would silently drop the
+# secondary timing data. Consumers need to be able to tell.
+RESULT_SCHEMA_VERSION = "1.1"
 
 __all__ = [
     "RESULT_SCHEMA_VERSION",
@@ -141,6 +146,14 @@ class RawSamples(BaseModel):
             "but retained so warmup convergence can be analysed empirically."
         ),
     )
+    secondary_latency_ms: list[float] = Field(
+        default_factory=list,
+        description=(
+            "Per-iteration secondary measurement (e.g. synchronized host wall time "
+            "alongside CUDA-event device time). Same iterations as latency_ms."
+        ),
+    )
+    secondary_warmup_latency_ms: list[float] = Field(default_factory=list)
 
 
 class Provenance(BaseModel):
@@ -184,12 +197,29 @@ class BenchmarkResult(BaseModel):
     backend: BackendDescriptor
     environment: EnvironmentReport
 
-    timing_mechanism: TimingMechanism = Field(
+    timing_mechanism: TimingMechanism | None = Field(
         description="How each sample was measured. Results using different "
-        "mechanisms must not be compared without saying so."
+        "mechanisms must not be compared without saying so. None when the run ended "
+        "before any timer was created (e.g. unsupported or unavailable), because "
+        "nothing was timed."
     )
     measures_steady_state: bool = Field(
         description="False when warmup_iterations is 0, meaning cold-start cost is included."
+    )
+    device_kind: DeviceKind | None = Field(
+        default=None,
+        description=(
+            "cuda / cpu / simulated. A CPU result is a real measurement of the host "
+            "CPU and is never GPU performance. None only in schema-1.0 results."
+        ),
+    )
+    model_info: ModelInfo | None = Field(
+        default=None, description="The model actually loaded, resolved to exact bytes."
+    )
+    secondary_timing_mechanism: TimingMechanism | None = None
+    secondary_latency: LatencyStatistics | None = Field(
+        default=None,
+        description="Statistics over raw_samples.secondary_latency_ms. Never the headline.",
     )
 
     phases: PhaseTimings = Field(default_factory=PhaseTimings)
@@ -217,6 +247,15 @@ class BenchmarkResult(BaseModel):
         """
         return self.status is BenchmarkStatus.OK and not self.is_simulated
 
+    @property
+    def is_gpu_measurement(self) -> bool:
+        """True only for a successful, non-simulated run on a CUDA device.
+
+        The check to use before presenting a number as GPU performance. A CPU
+        run is a real measurement, but not of a GPU.
+        """
+        return self.is_real_measurement and self.device_kind is DeviceKind.CUDA
+
     def summary_dict(self) -> dict[str, Any]:
         """Compact form for tables and comparisons, without raw samples."""
         return {
@@ -224,6 +263,8 @@ class BenchmarkResult(BaseModel):
             "status": self.status.value,
             "is_simulated": self.is_simulated,
             "backend": self.backend.name,
+            "device_kind": self.device_kind.value if self.device_kind else None,
+            "device": self.backend.device,
             "precision": self.configuration.precision.value,
             "batch_size": self.configuration.batch_size,
             "p50_ms": self.latency.p50_ms if self.latency else None,

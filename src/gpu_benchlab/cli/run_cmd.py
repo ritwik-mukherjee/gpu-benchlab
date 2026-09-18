@@ -1,8 +1,4 @@
-"""`gpu-bench run` — execute a single experiment from a config file.
-
-Backend selection is intentionally minimal in Phase 2: only the simulated backend
-exists. Real backends register here from Phase 3 onward.
-"""
+"""`gpu-bench run` — execute a single experiment from a config file."""
 
 from __future__ import annotations
 
@@ -15,7 +11,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from gpu_benchlab.backends.fake import FakeBackend
-from gpu_benchlab.core.backend import Backend
+from gpu_benchlab.core.backend import Backend, DeviceKind
 from gpu_benchlab.core.config import ExperimentConfig, load_config
 from gpu_benchlab.core.engine import BenchmarkEngine
 from gpu_benchlab.core.errors import ConfigurationError
@@ -42,21 +38,32 @@ def build_backend(config: ExperimentConfig, *, seed: int) -> Backend:
     """Instantiate the backend named by the config.
 
     Raises:
-        ConfigurationError: if the backend is unknown or not yet implemented.
+        ConfigurationError: if the backend is unknown, not yet implemented, or its
+            options / device / model are invalid.
     """
     name = config.backend.lower()
     if name == "fake":
+        if config.backend_options:
+            raise ConfigurationError(
+                "backend 'fake' accepts no backend_options, got: "
+                + ", ".join(sorted(config.backend_options))
+            )
         return FakeBackend(seed=seed)
+    if name == "pytorch":
+        # Constructing the backend does not import torch; that happens in validate().
+        from gpu_benchlab.backends.pytorch import PyTorchBackend
 
-    known_but_unimplemented = {"pytorch": 3, "onnxruntime": 4, "tensorrt": 5, "tensorrt_llm": 10}
+        return PyTorchBackend(config)
+
+    known_but_unimplemented = {"onnxruntime": 4, "tensorrt": 5, "tensorrt_llm": 10}
     if name in known_but_unimplemented:
         raise ConfigurationError(
             f"Backend {config.backend!r} is not implemented yet "
             f"(planned for Phase {known_but_unimplemented[name]}). "
-            "Only the simulated 'fake' backend exists at this stage."
+            "Available now: 'pytorch', and 'fake' (simulated)."
         )
     raise ConfigurationError(
-        f"Unknown backend {config.backend!r}. Available now: 'fake' (simulated)."
+        f"Unknown backend {config.backend!r}. Available now: 'pytorch', 'fake' (simulated)."
     )
 
 
@@ -87,10 +94,13 @@ def register(app: typer.Typer) -> None:
         descriptor = backend.descriptor
         if descriptor.is_simulated:
             _print_simulation_banner()
+        elif descriptor.device_kind is DeviceKind.CPU:
+            _print_cpu_banner()
 
         console.print(
             f"Running [cyan]{config.name}[/cyan] "
-            f"(backend={config.backend}, precision={config.precision.value}, "
+            f"(backend={config.backend}, device={descriptor.device}, "
+            f"precision={config.precision.value}, "
             f"batch={config.batch_size}, "
             f"warmup={config.benchmark.warmup_iterations}, "
             f"iters={config.benchmark.measurement_iterations})\n"
@@ -119,10 +129,40 @@ def _print_simulation_banner() -> None:
     )
 
 
+def _print_cpu_banner() -> None:
+    console.print(
+        Panel(
+            "This run executes on the [bold]host CPU[/bold]. The numbers are real "
+            "measurements of CPU inference.\n"
+            "They are [bold]not GPU performance[/bold] and must not be compared with "
+            "GPU results as a speedup.",
+            title="CPU RESULT — NOT GPU PERFORMANCE",
+            border_style="cyan",
+        )
+    )
+
+
 def _render_result(result: BenchmarkResult) -> None:
     style = _STATUS_STYLE[result.status]
     console.print(f"Status: [{style}]{result.status.value}[/{style}]")
-    console.print(f"Timing mechanism: [cyan]{result.timing_mechanism.value}[/cyan]")
+    if result.device_kind is not None:
+        console.print(f"Device: [cyan]{result.device_kind.value}[/cyan] ({result.backend.device})")
+    mechanism = (
+        result.timing_mechanism.value if result.timing_mechanism else "none (nothing was timed)"
+    )
+    console.print(f"Timing mechanism: [cyan]{mechanism}[/cyan]")
+    if result.secondary_timing_mechanism is not None:
+        console.print(
+            f"Secondary timing: [dim]{result.secondary_timing_mechanism.value} "
+            "(reported separately; never the headline)[/dim]"
+        )
+    if result.model_info is not None:
+        info = result.model_info
+        sha = f", sha256 {info.weights_sha256[:16]}..." if info.weights_sha256 else ""
+        console.print(
+            f"Model: [cyan]{info.name}[/cyan] ({info.architecture}, "
+            f"{info.parameter_count:,} params, weights {info.weights}{sha})"
+        )
     if not result.measures_steady_state:
         console.print("[yellow]Warmup disabled: these samples include cold start.[/yellow]")
     console.print()
@@ -132,6 +172,13 @@ def _render_result(result: BenchmarkResult) -> None:
     if result.latency is not None:
         _render_latency(result)
         _render_throughput(result)
+    if result.secondary_latency is not None and result.secondary_timing_mechanism is not None:
+        sec = result.secondary_latency
+        console.print(
+            f"[dim]Secondary ({result.secondary_timing_mechanism.value}): "
+            f"p50 {sec.p50_ms:.3f} ms, p95 {sec.p95_ms:.3f} ms, "
+            f"mean {sec.mean_ms:.3f} ms[/dim]\n"
+        )
 
     if result.errors:
         _render_errors(result)

@@ -123,6 +123,18 @@ class Timer(ABC):
     ) -> None:
         self._last_ms = self.stop()
 
+    def drain_secondary(self) -> tuple[TimingMechanism, list[float]] | None:
+        """Return and clear any secondary samples collected since the last drain.
+
+        A timer may record a second, independent measurement of each iteration
+        -- for example host wall time alongside CUDA-event device time. It
+        accumulates those internally so the engine adds no per-iteration work,
+        and the engine drains them once after warmup and once after measurement.
+
+        Returns ``None`` when the timer records no secondary measurement.
+        """
+        return None
+
     @property
     def last_ms(self) -> float:
         """Duration recorded by the most recent context-manager exit."""

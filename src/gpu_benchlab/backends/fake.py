@@ -28,9 +28,9 @@ from __future__ import annotations
 
 import random
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from gpu_benchlab.core.backend import Backend, BackendDescriptor
+from gpu_benchlab.core.backend import Backend, BackendDescriptor, DeviceKind
 from gpu_benchlab.core.config import ExperimentConfig
 from gpu_benchlab.core.errors import (
     BackendError,
@@ -39,6 +39,9 @@ from gpu_benchlab.core.errors import (
 )
 from gpu_benchlab.core.timing import Timer, TimingMechanism
 from gpu_benchlab.hardware.capability import Precision
+
+if TYPE_CHECKING:
+    from gpu_benchlab.hardware.types import EnvironmentReport
 
 __all__ = ["FakeBackend", "FakeTimer"]
 
@@ -143,6 +146,7 @@ class FakeBackend(Backend):
             name=self._name,
             version="simulated",
             device="simulated",
+            device_kind=DeviceKind.SIMULATED,
             is_simulated=True,
             detail=(
                 "Simulated backend. Produces scripted durations from a seeded "
@@ -152,7 +156,7 @@ class FakeBackend(Backend):
 
     # -- lifecycle ---------------------------------------------------------------------
 
-    def validate(self, config: Any) -> None:
+    def validate(self, config: Any, environment: EnvironmentReport) -> None:
         assert isinstance(config, ExperimentConfig)
 
         if config.precision in self._unsupported:

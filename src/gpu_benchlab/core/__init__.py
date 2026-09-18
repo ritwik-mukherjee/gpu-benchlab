@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from gpu_benchlab.core.backend import Backend, BackendDescriptor
+from gpu_benchlab.core.backend import Backend, BackendDescriptor, DeviceKind, ModelInfo
 from gpu_benchlab.core.config import (
     DEFAULT_MEASUREMENT_ITERATIONS,
     DEFAULT_WARMUP_ITERATIONS,
@@ -19,6 +19,7 @@ from gpu_benchlab.core.errors import (
     ConfigurationError,
     InvalidSampleError,
     OutOfMemoryError,
+    UnavailableError,
     UnsupportedConfigurationError,
 )
 from gpu_benchlab.core.provenance import capture_provenance
@@ -63,11 +64,13 @@ __all__ = [
     "BenchmarkResult",
     "BenchmarkStatus",
     "ConfigurationError",
+    "DeviceKind",
     "ErrorRecord",
     "ExperimentConfig",
     "InvalidSampleError",
     "LatencyStatistics",
     "ModelConfig",
+    "ModelInfo",
     "OutOfMemoryError",
     "PhaseTimings",
     "Provenance",
@@ -78,6 +81,7 @@ __all__ = [
     "ThroughputUnit",
     "Timer",
     "TimingMechanism",
+    "UnavailableError",
     "UnsupportedConfigurationError",
     "WallClockTimer",
     "capture_provenance",

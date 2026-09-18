@@ -56,6 +56,20 @@ class ModelConfig(BaseModel):
     sequence_length: int | None = Field(
         default=None, gt=0, description="For sequence models; None for vision models."
     )
+    weights: str | None = Field(
+        default=None,
+        description=(
+            'Pinned weights id (e.g. "IMAGENET1K_V2"), or "random" for seeded random '
+            "initialisation with no download. None means the model registry's pinned "
+            "default -- an explicit, versioned choice, never a library's moving "
+            "'DEFAULT' alias."
+        ),
+    )
+    seed: int = Field(
+        default=0,
+        ge=0,
+        description="Seed for random-init weights and for synthetic input generation.",
+    )
 
     @field_validator("input_shape")
     @classmethod
@@ -114,7 +128,20 @@ class ExperimentConfig(BaseModel):
     backend: str = Field(min_length=1, description='Backend name, e.g. "pytorch", "tensorrt".')
     precision: Precision = Precision.FP32
     batch_size: int = Field(default=1, gt=0)
-    device: str | None = Field(default=None, description='e.g. "cuda:0". None = backend default.')
+    device: str | None = Field(
+        default=None,
+        description=(
+            'e.g. "cpu", "cuda", "cuda:0". Real backends require it explicitly: there '
+            "is no implicit device choice and never a fallback from one to another."
+        ),
+    )
+    backend_options: dict[str, str | int | float | bool | None] = Field(
+        default_factory=dict,
+        description=(
+            "Backend-specific settings, validated by the chosen backend's own schema "
+            "(unknown keys are rejected there)."
+        ),
+    )
 
     benchmark: BenchmarkConfig = Field(default_factory=BenchmarkConfig)
 
