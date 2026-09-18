@@ -43,7 +43,7 @@ dependencies = [
 # --- Inference backends (installed per-machine; see docs/environment.md) -------------
 # PyTorch is intentionally NOT pinned to a CUDA build here. The correct wheel depends on
 # the target machine's driver. See docs/environment.md for the per-CUDA index URLs.
-torch = ["torch>=2.4"]
+torch = ["torch>=2.4", "torchvision>=0.19"]
 onnx = ["onnx>=1.16", "onnxruntime-gpu>=1.18"]
 onnx-cpu = ["onnx>=1.16", "onnxruntime>=1.18"]
 tensorrt = ["tensorrt>=10.0"]
@@ -110,7 +110,7 @@ strict = true
 warn_unreachable = true
 # Optional GPU runtimes are absent on CPU-only dev machines and CI.
 [[tool.mypy.overrides]]
-module = ["pynvml.*", "torch.*", "onnxruntime.*", "tensorrt.*", "tensorrt_llm.*", "psutil.*"]
+module = ["pynvml.*", "torch.*", "torchvision.*", "onnxruntime.*", "tensorrt.*", "tensorrt_llm.*", "psutil.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

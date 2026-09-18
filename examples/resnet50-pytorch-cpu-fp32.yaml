@@ -1,0 +1,22 @@
+# ResNet-50, eager PyTorch, on the HOST CPU, IEEE FP32.
+#
+# This produces REAL measurements of CPU inference. They are NOT GPU performance:
+# results are stamped device_kind: cpu, carry a CPU note, and are stored under a
+# `cpu-` prefixed directory. Never compare them with GPU results as a speedup.
+#
+# Weights: pinned torchvision IMAGENET1K_V2 (~98 MB, downloaded and SHA-256
+# verified on first use; `gpu-bench models fetch resnet50` pre-fetches them).
+
+name: resnet50-pytorch-cpu-fp32
+backend: pytorch
+device: cpu
+precision: fp32
+batch_size: 1
+
+model:
+  name: resnet50
+  weights: IMAGENET1K_V2
+
+benchmark:
+  warmup_iterations: 10
+  measurement_iterations: 100

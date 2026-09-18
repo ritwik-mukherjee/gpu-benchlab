@@ -1,0 +1,26 @@
+# ResNet-50, eager PyTorch, CUDA device 0, FP16 (explicit cast).
+#
+# On a machine without a usable NVIDIA GPU this produces status: unavailable --
+# it never falls back to the CPU. The CUDA path is implemented but has NOT yet
+# been validated on real NVIDIA hardware; see docs/limitations.md.
+#
+# Primary timing: CUDA events. Synchronized host wall time is recorded as a
+# secondary measurement only.
+
+name: resnet50-pytorch-cuda-fp16
+backend: pytorch
+device: cuda:0
+precision: fp16
+batch_size: 8
+
+model:
+  name: resnet50
+  weights: IMAGENET1K_V2
+
+backend_options:
+  cudnn_benchmark: true
+  channels_last: true
+
+benchmark:
+  warmup_iterations: 10
+  measurement_iterations: 100

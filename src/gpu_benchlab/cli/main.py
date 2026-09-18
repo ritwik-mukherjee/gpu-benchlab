@@ -21,7 +21,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from gpu_benchlab import __version__
-from gpu_benchlab.cli import run_cmd
+from gpu_benchlab.cli import models_cmd, run_cmd
 from gpu_benchlab.hardware import DetectionStatus, EnvironmentReport, detect_environment
 
 app = typer.Typer(
@@ -352,6 +352,7 @@ def doctor() -> None:
 # ---------------------------------------------------------------------------------------
 
 run_cmd.register(app)
+app.add_typer(models_cmd.models_app, name="models")
 
 
 def main() -> None:
