@@ -18,7 +18,7 @@ htmlcov/
 
 # Model weights and derived artifacts — never commit these (PRD §40).
 # Provide fetch scripts instead.
-models/
+/models/
 *.onnx
 *.engine
 *.plan
