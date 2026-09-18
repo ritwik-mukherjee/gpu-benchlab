@@ -133,3 +133,58 @@ jobs:
               assert abs(expected-stored) < 1e-9, f'{name}: {expected} != {stored}'
           print('All statistics independently reproduced from raw samples.')
           "
+
+  # The PyTorch backend's tests skip cleanly without torch, so the job above never
+  # runs them. This job installs the CPU build and runs them for real. It cannot
+  # exercise the CUDA path: GitHub-hosted runners have no NVIDIA GPU, so CUDA
+  # remains covered only by structural tests (see docs/limitations.md).
+  test-torch-cpu:
+    name: torch-cpu (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install project and CPU PyTorch
+        run: |
+          uv pip install --system -e ".[dev]"
+          uv pip install --system torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+      - name: PyTorch tests (must run, not skip)
+        shell: bash
+        run: |
+          pytest -m torch -v -rs | tee torch-tests.log
+          if grep -q "SKIPPED.*could not import 'torch'" torch-tests.log; then
+            echo "::error::torch tests were skipped even though torch is installed"
+            exit 1
+          fi
+
+      - name: CUDA request on a GPU-less runner is unavailable, never CPU
+        shell: bash
+        run: |
+          set +e
+          gpu-bench run -c examples/resnet50-pytorch-cuda-fp16.yaml --results-dir ci-results
+          code=$?
+          set -e
+          [ "$code" -eq 1 ] || { echo "::error::expected exit 1, got $code"; exit 1; }
+          python -c "
+          import glob, json
+          r = json.load(open(glob.glob('ci-results/*/result.json')[0]))
+          assert r['status'] == 'unavailable', r['status']
+          assert r['raw_samples']['latency_ms'] == [], 'nothing may have been measured'
+          assert 'Not falling back to CPU' in r['errors'][0]['message']
+          print('CUDA request correctly unavailable; no fallback.')
+          "
+
