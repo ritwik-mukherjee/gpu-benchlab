@@ -264,9 +264,18 @@ class TestCpuExecution:
         assert s["fp32_precision.cudnn.rnn"] == "ieee"
         assert s["fp32_precision.cuda.matmul"] == "ieee"
         assert s["dtype"] == "float32"
-        assert s["tf32_flags_applicable"] is False
+        assert s["cuda_flags_applicable"] is False
         assert s["sanity_check"] == "passed"
         assert s["torch_version"] == torch.__version__
+
+    def test_effective_input_shape_is_recorded(self, engine, register) -> None:
+        """Regression: with input_shape omitted, the executed shape was recorded nowhere."""
+        register(tiny_spec())
+        cfg = make_config(batch_size=3)
+        assert cfg.model.input_shape is None
+        result = engine.run(PyTorchBackend(cfg), cfg)
+        assert result.backend.settings["input_shape"] == "3x3x16x16"
+        assert result.backend.settings["input_seed"] == 0
 
     def test_options_are_applied_and_recorded(self, engine, register) -> None:
         register(tiny_spec())

@@ -92,17 +92,17 @@ def ensure_weights(
     fd, tmp_name = tempfile.mkstemp(dir=directory, suffix=".part")
     tmp_path = Path(tmp_name)
     try:
-        with os.fdopen(fd, "wb") as out:
-            # S310: the URL comes only from the pinned registry and is asserted
-            # to be https above, so no user-controlled scheme reaches urlopen.
-            with urllib.request.urlopen(spec.url, timeout=_DOWNLOAD_TIMEOUT_SECONDS) as resp:  # noqa: S310
-                for chunk in iter(lambda: resp.read(_CHUNK), b""):
-                    out.write(chunk)
+        # S310: the URL comes only from the pinned registry and is asserted to be
+        # https above, so no user-controlled scheme reaches urlopen.
+        with (
+            os.fdopen(fd, "wb") as out,
+            urllib.request.urlopen(spec.url, timeout=_DOWNLOAD_TIMEOUT_SECONDS) as resp,  # noqa: S310
+        ):
+            for chunk in iter(lambda: resp.read(_CHUNK), b""):
+                out.write(chunk)
     except OSError as exc:
         tmp_path.unlink(missing_ok=True)
-        raise UnavailableError(
-            f"Could not download pinned weights from {spec.url}: {exc}"
-        ) from exc
+        raise UnavailableError(f"Could not download pinned weights from {spec.url}: {exc}") from exc
 
     try:
         digest = _verify(tmp_path, spec)

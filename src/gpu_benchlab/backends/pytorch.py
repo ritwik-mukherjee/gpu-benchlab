@@ -408,8 +408,9 @@ class PyTorchBackend(Backend):
         )
         self._settings["num_threads"] = torch.get_num_threads()
         self._settings["num_interop_threads"] = torch.get_num_interop_threads()
-        # TF32 flags only have meaning on CUDA; recorded everywhere, but say so.
-        self._settings["tf32_flags_applicable"] = self._device_kind is DeviceKind.CUDA
+        # TF32 / cuDNN flags only have meaning on CUDA. They are recorded everywhere,
+        # so a CPU result must say they were inert rather than imply they applied.
+        self._settings["cuda_flags_applicable"] = self._device_kind is DeviceKind.CUDA
 
     # -- lifecycle ---------------------------------------------------------------------
 
@@ -485,6 +486,10 @@ class PyTorchBackend(Backend):
             )
 
         shape = (config.batch_size, *self._input_shape)
+        # Record the shape actually executed. When the config omits input_shape the
+        # registry default is used, and without this the result would not say what ran.
+        self._settings["input_shape"] = "x".join(str(d) for d in shape)
+        self._settings["input_seed"] = self._seed
         generator = torch.Generator(device="cpu").manual_seed(self._seed)
         inputs = torch.randn(shape, generator=generator).to(device=self._device, dtype=self._dtype)
         if self._options.channels_last and inputs.dim() == 4:
