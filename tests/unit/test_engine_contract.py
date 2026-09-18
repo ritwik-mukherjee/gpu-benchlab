@@ -374,3 +374,62 @@ class TestConfigAdditions:
         )
         with pytest.raises(ConfigurationError, match="accepts no backend_options"):
             build_backend(c, seed=0)
+
+
+class TestAnomalyFlag:
+    """Regression: a system suspend inside a timed iteration was stored as a clean 'ok'.
+
+    Observed 2026-09-18: one CPU ResNet-50 sample recorded 627,219.9 ms because the
+    machine entered S3 sleep mid-iteration (Windows Kernel-Power 42/107); the timer
+    kept counting. The mean became 6.5 s with no warning attached.
+    """
+
+    def test_suspend_sized_outlier_is_flagged_not_dropped(self, engine: BenchmarkEngine) -> None:
+        samples = [100.0] * 99 + [627_219.9]
+        backend = ProbeBackend(timer=ScriptedTimer(samples))
+        result = engine.run(backend, cfg(warmup=0, iterations=100))
+
+        assert result.status is BenchmarkStatus.OK, "real data is kept; the run is not failed"
+        assert result.raw_samples.latency_ms == samples, "nothing is dropped or altered"
+        note = next(n for n in result.notes if n.startswith("ANOMALY"))
+        assert "1 measured sample(s)" in note
+        assert "627219.9" in note
+        assert "iteration 99" in note
+
+    def test_ordinary_tail_latency_is_not_flagged(self, engine: BenchmarkEngine) -> None:
+        # Shape of the clean 2026-09-18 CPU run: median ~101 ms, max ~151 ms.
+        samples = [101.0] * 90 + [150.6] * 10
+        result = engine.run(
+            ProbeBackend(timer=ScriptedTimer(samples)), cfg(warmup=0, iterations=100)
+        )
+        assert not any(n.startswith("ANOMALY") for n in result.notes)
+
+    def test_threshold_is_strictly_greater_than_factor(self) -> None:
+        from gpu_benchlab.core.engine import ANOMALY_FACTOR, anomaly_note
+
+        assert anomaly_note([10.0, ANOMALY_FACTOR * 10.0], 10.0) is None
+        assert anomaly_note([10.0, ANOMALY_FACTOR * 10.0 + 0.001], 10.0) is not None
+
+    def test_zero_median_does_not_divide(self) -> None:
+        from gpu_benchlab.core.engine import anomaly_note
+
+        assert anomaly_note([0.0, 0.0, 5.0], 0.0) is None
+
+    def test_failed_runs_get_no_anomaly_note(self, engine: BenchmarkEngine) -> None:
+        result = engine.run(ProbeBackend(fail_at="load"), cfg())
+        assert not any(n.startswith("ANOMALY") for n in result.notes)
+
+
+class TestAnomalyIsVisibleInCli:
+    def test_cli_renders_anomaly_note(self, environment, capsys) -> None:
+        from gpu_benchlab.cli import run_cmd
+
+        engine = BenchmarkEngine(environment=environment)
+        samples = [100.0] * 99 + [627_219.9]
+        result = engine.run(
+            ProbeBackend(timer=ScriptedTimer(samples)), cfg(warmup=0, iterations=100)
+        )
+        run_cmd._render_result(result)
+        out = capsys.readouterr().out
+        assert "SUSPECT RUN" in out
+        assert "ANOMALY" in out

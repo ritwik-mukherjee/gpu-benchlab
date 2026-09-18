@@ -49,7 +49,7 @@ from gpu_benchlab.core.timing import Timer, TimingMechanism, WallClockTimer
 from gpu_benchlab.hardware.detect import detect_environment
 from gpu_benchlab.hardware.types import EnvironmentReport
 
-__all__ = ["BenchmarkEngine"]
+__all__ = ["ANOMALY_FACTOR", "BenchmarkEngine", "anomaly_note"]
 
 SIMULATION_WARNING = (
     "SIMULATED RESULT: produced by a simulated backend. These numbers exercise "
@@ -69,7 +69,34 @@ NO_WARMUP_WARNING = (
     "performance."
 )
 
+# A measured sample more than this many times the run's median is flagged as a
+# gross anomaly. Heuristic, deliberately loose: it exists to catch events that are
+# not inference at all -- a system suspend inside a timed iteration (observed: one
+# 627 s sample, see ENGINEERING_LOG 2026-09-18), a debugger pause, heavy
+# preemption -- not to classify ordinary tail latency. Flagged samples are never
+# dropped or altered; the result says they are there.
+ANOMALY_FACTOR = 10.0
+
 _MS_PER_SECOND = 1000.0
+
+
+def anomaly_note(samples: list[float], median_ms: float) -> str | None:
+    """Describe gross anomalies in measured samples, or return None if there are none."""
+    if median_ms <= 0:
+        return None
+    flagged = [(i, v) for i, v in enumerate(samples) if v > ANOMALY_FACTOR * median_ms]
+    if not flagged:
+        return None
+    worst_index, worst = max(flagged, key=lambda item: item[1])
+    indices = ", ".join(str(i) for i, _ in flagged[:20]) + (" ..." if len(flagged) > 20 else "")
+    return (
+        f"ANOMALY: {len(flagged)} measured sample(s) exceeded {ANOMALY_FACTOR:g}x the median "
+        f"({median_ms:.3f} ms); largest {worst:.1f} ms at iteration {worst_index} "
+        f"(iterations: {indices}). Samples this far out usually mean the process was "
+        "preempted or the system was suspended -- the timer keeps counting through "
+        "sleep. They are kept, not dropped, so mean, stddev, max and throughput include "
+        "them; percentiles are more robust. Treat this run as suspect and re-run."
+    )
 
 
 class BenchmarkEngine:
@@ -218,6 +245,10 @@ class BenchmarkEngine:
             notes.append(CPU_RESULT_NOTE)
         if config.benchmark.warmup_iterations == 0:
             notes.append(NO_WARMUP_WARNING)
+        if latency is not None:
+            anomaly = anomaly_note(raw.latency_ms, latency.median_ms)
+            if anomaly is not None:
+                notes.append(anomaly)
 
         return BenchmarkResult(
             experiment_id=experiment_id,

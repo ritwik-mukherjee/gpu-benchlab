@@ -182,6 +182,9 @@ def _render_result(result: BenchmarkResult) -> None:
 
     if result.errors:
         _render_errors(result)
+    for note in result.notes:
+        if note.startswith("ANOMALY"):
+            console.print(Panel(note, title="SUSPECT RUN", border_style="red"))
 
 
 def _render_phases(result: BenchmarkResult) -> None:
