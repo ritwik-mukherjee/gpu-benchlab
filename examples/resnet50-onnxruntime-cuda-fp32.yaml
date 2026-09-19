@@ -1,0 +1,24 @@
+# ResNet-50 (ONNX, opset 20) on ONNX Runtime's CUDA execution provider, IEEE FP32
+# (use_tf32=0 is set explicitly: ORT's CUDA EP enables TF32 by default).
+#
+# IMPLEMENTED BUT UNVERIFIED on NVIDIA hardware. Without a working CUDA EP this is
+# status: unavailable -- never silently run on the CPU, even though ONNX Runtime
+# itself would do exactly that.
+
+name: resnet50-onnxruntime-cuda-fp32
+backend: onnxruntime
+device: cuda:0
+precision: fp32
+batch_size: 8
+
+model:
+  name: resnet50
+  weights: IMAGENET1K_V2
+
+backend_options:
+  use_io_binding: true
+  cudnn_conv_algo_search: EXHAUSTIVE
+
+benchmark:
+  warmup_iterations: 10
+  measurement_iterations: 100

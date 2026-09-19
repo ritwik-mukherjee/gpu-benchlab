@@ -7,6 +7,7 @@ from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
@@ -55,15 +56,21 @@ def build_backend(config: ExperimentConfig, *, seed: int) -> Backend:
 
         return PyTorchBackend(config)
 
-    known_but_unimplemented = {"onnxruntime": 4, "tensorrt": 5, "tensorrt_llm": 10}
+    if name == "onnxruntime":
+        from gpu_benchlab.backends.ort_backend import OnnxRuntimeBackend
+
+        return OnnxRuntimeBackend(config)
+
+    known_but_unimplemented = {"tensorrt": 5, "tensorrt_llm": 10}
     if name in known_but_unimplemented:
         raise ConfigurationError(
             f"Backend {config.backend!r} is not implemented yet "
             f"(planned for Phase {known_but_unimplemented[name]}). "
-            "Available now: 'pytorch', and 'fake' (simulated)."
+            "Available now: 'pytorch', 'onnxruntime', and 'fake' (simulated)."
         )
     raise ConfigurationError(
-        f"Unknown backend {config.backend!r}. Available now: 'pytorch', 'fake' (simulated)."
+        f"Unknown backend {config.backend!r}. "
+        "Available now: 'pytorch', 'onnxruntime', 'fake' (simulated)."
     )
 
 
@@ -88,7 +95,7 @@ def register(app: typer.Typer) -> None:
             config = load_config(config_path)
             backend = build_backend(config, seed=seed)
         except ConfigurationError as exc:
-            console.print(f"[red]Configuration error:[/red]\n{exc}")
+            console.print(f"[red]Configuration error:[/red]\n{escape(str(exc))}")
             raise typer.Exit(EXIT_CONFIG_ERROR) from exc
 
         descriptor = backend.descriptor
@@ -135,7 +142,10 @@ def _print_cpu_banner() -> None:
             "This run executes on the [bold]host CPU[/bold]. The numbers are real "
             "measurements of CPU inference.\n"
             "They are [bold]not GPU performance[/bold] and must not be compared with "
-            "GPU results as a speedup.",
+            "GPU results as a speedup.\n"
+            "Local CPU measurements; the environment is known to be non-stationary and "
+            "these measurements are [bold]not suitable for backend performance "
+            "ranking[/bold].",
             title="CPU RESULT — NOT GPU PERFORMANCE",
             border_style="cyan",
         )
@@ -184,7 +194,7 @@ def _render_result(result: BenchmarkResult) -> None:
         _render_errors(result)
     for note in result.notes:
         if note.startswith("ANOMALY"):
-            console.print(Panel(note, title="SUSPECT RUN", border_style="red"))
+            console.print(Panel(escape(note), title="SUSPECT RUN", border_style="red"))
 
 
 def _render_phases(result: BenchmarkResult) -> None:
@@ -261,6 +271,6 @@ def _render_errors(result: BenchmarkResult) -> None:
     table.add_column("Type", no_wrap=True)
     table.add_column("Message")
     for error in result.errors:
-        table.add_row(error.phase or "-", error.type, error.message)
+        table.add_row(error.phase or "-", error.type, escape(error.message))
     console.print(table)
     console.print()

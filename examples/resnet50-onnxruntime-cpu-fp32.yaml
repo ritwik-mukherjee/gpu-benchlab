@@ -1,0 +1,23 @@
+# ResNet-50 exported to ONNX (opset 20, dynamic batch), run by ONNX Runtime on the
+# CPU execution provider, FP32.
+#
+# REAL measurements of the host CPU -- NOT GPU performance. On the development laptop
+# the CPU is known to be non-stationary (docs/limitations.md §3): these numbers are
+# not suitable for ranking ONNX Runtime against PyTorch.
+#
+# The artifact is exported on first use (needs the [onnx-export] extra) and cached;
+# `gpu-bench onnx verify resnet50` checks it against PyTorch first.
+
+name: resnet50-onnxruntime-cpu-fp32
+backend: onnxruntime
+device: cpu
+precision: fp32
+batch_size: 1
+
+model:
+  name: resnet50
+  weights: IMAGENET1K_V2
+
+benchmark:
+  warmup_iterations: 10
+  measurement_iterations: 100
