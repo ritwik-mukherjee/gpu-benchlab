@@ -80,6 +80,16 @@ uv pip install -e ".[onnx-cpu]"   # onnxruntime      (CPU only)
 registered, and every benchmark result records which provider actually ran — a
 TensorRT-EP result must never be labelled "ONNX Runtime CUDA".
 
+**Measured on the development machine (2026-09-19):** `onnxruntime 1.30.0` (13.6 MiB
+wheel), `onnx 1.23.0`, `onnxscript 0.7.2`; `onnxruntime-gpu 1.30.0` is 153 MiB *without*
+CUDA libraries (`[cuda,cudnn]` extras pin CUDA 13 / cuDNN 9). **Both ORT packages require
+Python ≥ 3.11.** ONNX export additionally needs the `[onnx-export]` extra (torch,
+torchvision, onnx, onnxscript).
+
+A GPU package on a machine where the CUDA EP cannot load still *lists*
+`CUDAExecutionProvider`, and ORT will silently run on CPU if asked for it; the backend
+detects this and reports `unavailable` (docs/decisions/0007).
+
 ## 5. TensorRT
 
 ```bash

@@ -396,3 +396,73 @@ selection; `cudnn.benchmark` warmup needs; real OOM; the legacy-TF32 branch
 ### Next
 
 Awaiting approval for Phase 4. See the Phase 3 report for the recommendation.
+
+---
+
+## 2026-09-19 — Phase 4: ONNX export and ONNX Runtime backend
+
+### Environment
+
+Same laptop, no NVIDIA GPU, on AC power for the evidence runs. Installed onnx 1.23.0,
+onnxscript 0.7.2, onnxruntime 1.30.0 (CPU); onnxruntime-gpu 1.30.0 in a separate,
+disposable venv for fallback testing.
+
+### Findings that would have produced wrong results
+
+1. **ORT silently substitutes CPU for a requested CUDA EP.** With the real
+   onnxruntime-gpu 1.30 and no CUDA libraries, `get_available_providers()` *listed*
+   the CUDA EP, and a session requested with only that EP was created and ran on CPU.
+   Only a stderr warning. The CPU package does the same with a `UserWarning`. A naive
+   backend would have produced a "CUDA" result from the CPU.
+2. **`disable_cpu_ep_fallback` cannot tell load failure from partial placement** (same
+   error), so the backend checks `session.get_providers()` and measures placement.
+3. **ORT's CUDA EP enables TF32 by default** (`use_tf32=1`), mirroring PyTorch.
+4. **The exporter writes weights to a separate `.onnx.data` file by default**, so a hash
+   of the `.onnx` alone would not identify the model. Fixed with `external_data=False`.
+5. **The exporter's default is a static batch**; batch 4 was rejected by ORT.
+6. **Top-1 agreement alone would have passed an FP16 execution** (the negative control
+   kept top-1 = 1.0 while failing elementwise by 14×).
+
+### Correctness (the headline)
+
+Pinned ResNet-50, PyTorch FP32 vs ORT CPU EP, identical inputs, 3 batches × 3 seeds:
+**9/9 pass**, max |Δ| 1.7e-6 – 3.1e-6 on logits of magnitude ≈ 5, at most 0.44 % of the
+pre-registered allowance, top-1 and top-5 100 %. **FP16 negative control rejected**
+(687/1000 out of tolerance, 14.1× the bound). Two separate runs gave identical errors.
+The stored verdict was re-derived from `outputs.npz` by a script that imports nothing
+from the tool: 0 disagreements.
+
+### CPU benchmark observation (not a ranking)
+
+ORT CPU EP ResNet-50, batch 1, all 58 nodes on the CPU EP: the run completed and was
+labelled. Its 20-iteration block means (46.4 → 57.1 ms) drifted like the Phase 3 runs.
+**Local CPU measurements; the environment is known to be non-stationary and these
+measurements are not suitable for backend performance ranking.** It is also not
+comparable with the PyTorch run: different input generators, thread counts, days, no
+interleaving, and a graph fused from 122 to 58 nodes.
+
+### Bugs found in my own code during Phase 4
+
+- `Δ` in a CLI table header crashed a cp1252 console after the evidence was saved, so a
+  passing check exited 1. CliRunner (UTF-8) could not see it. A test now scans all CLI
+  string literals, and it fails on the original header.
+- Rich markup deleted `[torch]` / `[onnx-export]` from error messages on screen. Now escaped,
+  with a test that fails without the fix.
+
+### Deviations from the plan
+
+- `disable_cpu_ep_fallback` is not used (finding 2).
+- Node placement is measured on a separate profiling session with identical options:
+  the benchmark session is never profiled.
+- The PyTorch backend's input generator was **not** unified with ORT's (numpy), so that
+  Phase 3 stays untouched. It must be unified before any cross-backend latency comparison.
+
+### Unverified until NVIDIA hardware
+
+The ORT CUDA EP itself, full placement of ResNet-50 on it, ORT's end-of-Run stream
+synchronization (the CUDA timing relies on it), IOBinding, the effect of `use_tf32`,
+and correctness on CUDA.
+
+### Next
+
+Awaiting approval for Phase 5.

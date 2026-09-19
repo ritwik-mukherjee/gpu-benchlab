@@ -6,9 +6,10 @@ acceleration stacks — PyTorch, ONNX Runtime, TensorRT and TensorRT-LLM.**
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 
-> **Status: early development — Phase 3 of 12.**
-> Environment detection, the benchmark core and a PyTorch backend (ResNet-50) are
-> implemented and tested. The development machine has **no NVIDIA GPU**: the PyTorch CPU
+> **Status: early development — Phase 4 of 12.**
+> Environment detection, the benchmark core, a PyTorch backend and an ONNX Runtime backend
+> (ResNet-50) are implemented and tested; ONNX Runtime's outputs are verified against
+> PyTorch. The development machine has **no NVIDIA GPU**: the PyTorch CPU
 > path has run on real hardware, but the CUDA path is implemented and only structurally
 > tested. **This repository contains no GPU performance measurements.** The only real
 > measurements are CPU runs, published as methodology evidence and labelled as CPU results.
@@ -74,7 +75,7 @@ Timing and validity methodology: [docs/methodology.md](docs/methodology.md).
 |---|---|---|
 | Simulated (`fake`) | Implemented | **Produces no measurements.** Seeded random latency model for testing the framework on a GPU-less machine. |
 | PyTorch | Implemented (Phase 3) | CPU: executed on real hardware. CUDA: implemented, **unverified on NVIDIA hardware**. CUDA-event timing, explicit precision, IEEE FP32 enforced. |
-| ONNX Runtime | Planned — Phase 4 | Execution provider recorded explicitly |
+| ONNX Runtime | Implemented (Phase 4) | CPU EP: executed on real hardware, outputs verified against PyTorch. CUDA EP: implemented, **unverified on NVIDIA hardware**. Active EP verified — no silent CPU fallback. |
 | TensorRT | Planned — Phase 5 | Engine build time measured separately |
 | TensorRT-LLM | Planned — Phase 10 | TTFT, inter-token latency, tokens/sec |
 

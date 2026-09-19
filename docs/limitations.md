@@ -3,7 +3,7 @@
 This document exists so that no reader has to guess what has actually been verified.
 It is updated whenever something is implemented but not executed on real hardware.
 
-Last updated: 2026-09-18 (end of Phase 3).
+Last updated: 2026-09-19 (end of Phase 4).
 
 ---
 
@@ -14,9 +14,9 @@ blurred.
 
 | | Kind | Exists? | Where |
 |---|---|---|---|
-| **A** | **Real CPU measurements** | Yes | PyTorch ResNet-50 on the development laptop's CPU. Evidence: `results/published/2026-09-18-phase3-cpu-resnet50/`. Stamped `device_kind: cpu`, stored under `cpu-` prefixes, carry a CPU note. **Not GPU performance.** |
+| **A** | **Real CPU measurements** | Yes | PyTorch and ONNX Runtime (CPU EP) ResNet-50 on the development laptop's CPU, plus the PyTorch-vs-ORT correctness reports. Evidence: `results/published/2026-09-18-phase3-cpu-resnet50/`, `results/published/2026-09-19-phase4-onnx/`. Stamped `device_kind: cpu`, stored under `cpu-` prefixes, carry a CPU note. **Not GPU performance.** |
 | **B** | **Simulated measurements** | Yes | The `fake` backend. Stamped `is_simulated: true`, `timing_mechanism: scripted`, `sim-` prefixes. **Not measurements of anything.** |
-| **C** | **CUDA functionality: implemented, only fake/structurally tested** | Yes | NVML success path, PyTorch CUDA validation, `CudaEventTimer`. Tested against patched CUDA queries and fake event/NVML APIs. **Never executed on NVIDIA hardware.** |
+| **C** | **CUDA functionality: implemented, only fake/structurally tested** | Yes | NVML success path, PyTorch CUDA validation, `CudaEventTimer`, ONNX Runtime CUDA EP (provider options, IOBinding, placement). Tested against patched CUDA queries and fake event/NVML APIs. **Never executed on NVIDIA hardware.** |
 | **D** | **NVIDIA hardware measurements** | **No** | None exist. No GPU performance claim of any kind can be made from this repository today. |
 
 The development machine (Intel Core i7-8565U, Intel UHD 620 only) has **no NVIDIA GPU**.
@@ -43,6 +43,11 @@ The development machine (Intel Core i7-8565U, Intel UHD 620 only) has **no NVIDI
 | Process-global torch state restoration | Tested after success and after failure |
 | Result schema 1.1, 1.0 compatibility | A committed Phase 2 (schema 1.0) result still loads |
 | Gross-anomaly flag | Regression test, and applied to the real stored runs: flags exactly the run containing a system suspend |
+| **ONNX export of pinned ResNet-50** | Executed: opset 20, dynamic batch, single self-contained file, `onnx.checker` full check, byte-identical re-export |
+| **PyTorch vs ONNX Runtime correctness (CPU EP)** | 9/9 cases pass (max \|Δ\| ≤ 3.1e-6, ≤ 0.44 % of tolerance, top-1/top-5 100 %); FP16 negative control rejected (14.1× the bound); verdict re-derived by a script sharing no code with the tool |
+| **ONNX Runtime CPU EP benchmark path** | Real ResNet-50 runs; active EP and per-node placement (58/58 on CPU EP) measured and recorded |
+| **No silent CUDA→CPU fallback in ONNX Runtime** | Against the **real onnxruntime-gpu 1.30** on this machine (CUDA libraries absent), where ORT itself silently built a CPU session: the backend returned `unavailable` in phase `build`, 0 samples |
+| CLI on a Windows cp1252 console | Regression tests for non-cp1252 characters and for Rich markup swallowing `[extra]` names |
 
 ## 2. What has NOT been executed on real NVIDIA hardware (category C)
 
@@ -59,6 +64,8 @@ Implemented and structurally tested; **unverified**.
 | `torch.cuda.synchronize`, `empty_cache` calls | Not executed (the only unexercised lines in the backend apart from the legacy-TF32 branch) | — |
 | GPU memory, OOM on a real device | torch OOM mapping tested with a raised `torch.OutOfMemoryError` | Real OOM behaviour and recovery |
 | Legacy `allow_tf32` branch (torch < 2.9) | **Not tested at all** — the installed torch has the new API | Whether the fallback works |
+| **ONNX Runtime CUDA EP** | Real-fallback test (real ORT, CUDA absent) + fake ORT module for provider options, IOBinding and placement | Whether the EP loads and runs; whether ResNet-50 places fully on it; whether ORT synchronizes the stream at the end of `Run` (the timing relies on it); IOBinding behaviour; `use_tf32` effect |
+| PyTorch-vs-ORT correctness **on CUDA** | Not executed | Whether the same tolerance holds with cuDNN kernels (`use_tf32 = 0`) |
 
 **Semantics of CUDA-event time, stated so it is not misread later.** The primary
 CUDA sample is device time between two events on the stream. If the host launches
@@ -94,9 +101,10 @@ exists so the gap can be quantified rather than assumed.
 
 ## 4. Not yet implemented
 
-Phases 4–12: ONNX Runtime, TensorRT, telemetry sampling during runs, the experiment
-runner (matrices, repeats), the comparison engine, dashboard, reports, and the LLM
-generation path. See [roadmap.md](roadmap.md).
+Phases 5–12: TensorRT, telemetry sampling during runs, the experiment runner
+(matrices, repeats), the comparison engine, dashboard, reports, and the LLM generation
+path. Reduced-precision (FP16/INT8) ONNX artifacts are out of Phase 4 scope. See
+[roadmap.md](roadmap.md).
 
 ## 5. Platform limitations
 
@@ -119,6 +127,14 @@ generation path. See [roadmap.md](roadmap.md).
 - Single runs only. Repeats and between-run variance are not implemented yet
   (Phase 7), and the A/B experiment showed run-to-run variation on this machine
   larger than the effect being tested.
+- **No cross-backend latency ranking is possible yet.** Beyond CPU non-stationarity,
+  PyTorch and ORT benchmark inputs come from different generators, thread counts differ
+  unless set, and runs are not interleaved. The ORT CPU run of 2026-09-19 also drifted
+  (20-iteration block means 46–57 ms).
+- The FP16 negative control is a proxy for TF32, not a TF32 measurement.
+- The ORT backend requires Python ≥ 3.11 (onnxruntime 1.30); the core supports 3.10+.
+- Node placement is measured on a separate profiling session with identical options,
+  assuming identical partitioning (deterministic given model, options and EPs).
 
 ## 7. Known open questions
 

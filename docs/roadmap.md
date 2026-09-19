@@ -10,8 +10,8 @@ exists — it is done when it has been executed and its output verified.
 | **1** | Hardware / driver / CUDA / framework detection | **Complete** (GPU-present path unverified — see [limitations](limitations.md)) |
 | **2** | Benchmark core: timing engine, warmup, measurement loop, statistics, result schema | **Complete** (validated against a simulated backend; no real runtime yet) |
 | **3** | PyTorch backend: model load, CUDA inference, result persistence | **Complete** — CPU path executed on real hardware; CUDA path implemented but **unverified** (no NVIDIA GPU) |
-| 4 | ONNX Runtime backend: CUDA EP, explicit provider recording | Proposed next (awaiting approval) |
-| 5 | TensorRT backend: ONNX→engine build, serialization, inference | Planned |
+| **4** | ONNX Runtime backend: CUDA EP, explicit provider recording | **Complete** — export reproducible, CPU EP outputs verified against PyTorch; CUDA EP implemented but **unverified** |
+| 5 | TensorRT backend: ONNX→engine build, serialization, inference | Proposed next (awaiting approval) |
 | 6 | GPU telemetry: sampled utilisation, VRAM, power, temperature | Planned |
 | 7 | Experiment runner: YAML configs, batch/precision matrices | Planned |
 | 8 | Comparison engine: baselines, speedups, derived metrics | Planned |

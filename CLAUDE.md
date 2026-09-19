@@ -146,6 +146,12 @@ Already-verified examples of things memory gets wrong (all verified 2026-09-18):
 | "FP32" in PyTorch means IEEE FP32 | **No.** `torch.backends.cudnn.allow_tf32` defaults to **True**, so FP32 convolutions on Ampere+ run as TF32. Set FP32 precision explicitly (`fp32_precision="ieee"`, PyTorch ≥ 2.9) and record it. |
 | `from_pretrained` loads FP32 | **Not since transformers v5.** Default is `dtype="auto"` (the saved dtype, e.g. BF16); `torch_dtype` is deprecated in favour of `dtype`. Always pass dtype explicitly and verify after load. |
 | The TF32 APIs can be mixed | **No.** After setting the new `fp32_precision` API, *reading* legacy `torch.backends.cudnn.allow_tf32` raises `RuntimeError` (observed on torch 2.14, even with conv and RNN both `"ieee"`). Use only the new API when present. |
+| ORT's CUDA EP runs IEEE FP32 | **No.** `use_tf32` defaults to **1**. Pass `use_tf32="0"` for FP32 and record it. |
+| `get_available_providers()` lists what will run | **No.** onnxruntime-gpu 1.30 listed `CUDAExecutionProvider` on a machine whose CUDA DLLs could not load (observed). |
+| Requesting only the CUDA EP guarantees CUDA or an error | **No.** ORT silently created a **CPU** session (observed, both packages). Always check `session.get_providers()` after creation. |
+| `session.disable_cpu_ep_fallback` tells you why | **No.** Same error whether the EP failed to load or only some nodes fell back. |
+| `torch.onnx.export` output is one self-contained file | **Not by default:** weights went to a separate `.onnx.data` file even for ~100 MB. Use `external_data=False` (< 2 GB) so the artifact hash covers the weights. Its progress output also crashes a Windows cp1252 console; pass `verbose=False`. |
+| The `onnx` library's max opset is safe to use | **No.** onnx 1.23 supports opset 28; ORT 1.30 rejected it. Pin the opset. |
 | `torch.onnx.export` uses the TorchScript exporter | Since PyTorch 2.9 it defaults to `dynamo=True`; use `dynamic_shapes` — `dynamic_axes` is deprecated. Record exporter mode and opset. |
 | `tie_word_embeddings: true` means the checkpoint stores one matrix | Qwen3 checkpoints store `lm_head.weight` separately anyway (verified from the safetensors index). On-disk size overstates tied in-memory size; runtimes may differ in whether they deduplicate. |
 

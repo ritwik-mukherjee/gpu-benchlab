@@ -69,10 +69,13 @@ src/gpu_benchlab/
     backends/      one module per inference runtime
         fake.py         simulated backend (framework testing only)
         pytorch.py      eager PyTorch, CPU + CUDA; CudaEventTimer (Phase 3)
-        (onnxruntime, tensorrt, tensorrt_llm: Phases 4-5, 10)
+        ort_backend.py  ONNX Runtime, CPU + CUDA EP; provider verification (Phase 4)
+        (tensorrt, tensorrt_llm: Phases 5, 10)
+    export/        Phase 4 — ONNX export + manifest; PyTorch-vs-ORT correctness check
     models/        Phase 3 — model registry and pinned-weights verification
         registry.py     name -> architecture, expected params, shapes, pinned weights
         weights.py      stdlib download + SHA-256 verification
+        torch_loader.py verified reference model for export / correctness (Phase 4)
     telemetry/     Phase 6 — NVML sampling during a run
     experiments/   Phase 7 — config parsing, matrix expansion, runner
     compare/       Phase 8 — baselines and derived metrics

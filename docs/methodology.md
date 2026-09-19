@@ -1,6 +1,6 @@
 # Benchmark methodology
 
-> **Status (end of Phase 3):** §§1–6, §10 and §12 are **implemented** and tested.
+> **Status (end of Phase 4):** §§1–6, §10, §12 and §13 are **implemented** and tested.
 > §9 has its first real measurement (inter-iteration harness overhead, CPU). §§7–8
 > (repeats, telemetry sampling) are specified but not implemented.
 >
@@ -45,7 +45,8 @@ report them separately rather than picking a favourite.
 |---|---|---|---|
 | PyTorch, CUDA | `torch.cuda.Event` elapsed time on the execution stream (`cuda_event`) | synchronized host `perf_counter_ns` (`wall_clock_synchronized`) | Implemented, **unverified on hardware**. Device sync before each start event, end-event sync before reading. Event time includes any idle gaps caused by slow kernel launch. |
 | PyTorch, CPU | `perf_counter_ns`, no sync (`wall_clock`) | — | PyTorch CPU ops have completed when the call returns, so there is nothing to synchronize and the mechanism says so. |
-| ONNX Runtime | `perf_counter_ns` around `run()` | ORT profiling where enabled | ORT synchronizes internally before returning. The **execution provider is recorded** — a CUDA-EP result and a TensorRT-EP result are not interchangeable. |
+| ONNX Runtime, CPU EP | `perf_counter_ns` around `session.run` (`wall_clock`) | — | `run` returns after execution. Session creation is timed as the engine build, never as inference. |
+| ONNX Runtime, CUDA EP | `perf_counter_ns` around `run_with_iobinding` (`wall_clock`) | — | Implemented, **unverified on hardware**. Relies on ORT synchronizing the CUDA stream at the end of `Run`. IOBinding keeps input/output on the device so host↔device copies are not timed. The **active EP is verified and recorded** — ORT will otherwise silently substitute CPU. |
 | TensorRT | CUDA events on the execution stream | `perf_counter_ns` + stream sync | Engine build and engine load are measured separately and never included. |
 | TensorRT-LLM | per-token timestamps | — | TTFT and inter-token latency require timestamps inside generation, not around it. |
 
@@ -247,7 +248,53 @@ samples are kept, never dropped, because they are real clock readings — they a
 just not inference. The threshold is deliberately loose: it catches suspends and
 debugger pauses, not ordinary tail latency, and it will miss moderate disturbances.
 
-## 13. Known threats to validity
+## 13. Cross-runtime correctness (implemented, Phase 4)
+
+Before a second runtime's latency means anything, it must compute the same function.
+`gpu-bench onnx verify` compares ONNX Runtime with PyTorch on **identical float32
+inputs** (numpy PCG64, recorded verbatim) and **identical weight bytes** (SHA-256
+checked before comparing). Preprocessing is outside the model, so it is identical by
+construction.
+
+**Criterion (pre-registered before the pinned-weight run):** identical shape and dtype,
+all finite, elementwise `|ORT − PyTorch| ≤ atol + rtol·|ref|` with `rtol = 1e-4` and
+`atol = 1e-4·max|ref|`, and identical top-1 for every sample. Batches 1, 4, 8 × seeds 0,
+1, 2.
+
+**Why this tolerance.** FP32 unit roundoff is 2⁻²⁴ ≈ 6e-8; reordered reductions and
+fused Conv+BN across ~50 layers plausibly give 1e-6–1e-5 relative differences, so 1e-4
+leaves margin. It is ≈ 5× tighter than the unit roundoff of TF32/FP16 (2⁻¹¹ ≈ 4.9e-4),
+so reduced-precision execution should fail it.
+
+**That is tested, not assumed.** Every report includes a **negative control**: the same
+PyTorch model in FP16, which must FAIL. On ResNet-50 it failed with 687 of 1000 logits
+out of tolerance (worst 14.1× the bound). The genuine comparisons used ≤ 0.44 % of
+their allowance (worst 0.0044×). FP16 is a proxy for TF32 (same mantissa width; TF32
+accumulates in FP32), so this is evidence the tolerance can catch TF32, not proof.
+
+**Top-1 agreement alone is not sufficient.** The FP16 control kept top-1 = 1.0 on every
+sample while failing elementwise. A check that only compared predicted classes would
+have passed it.
+
+`max_rel_error` is informational: for small logits the scale-aware `atol` dominates,
+so a passing case can show `max_rel_error > rtol` (seen: up to 1.9e-4).
+
+Every report stores `report.json` plus raw outputs (`outputs.npz`);
+`analysis/rederive_correctness.py`, which imports nothing from the tool, re-derives the
+verdict from them.
+
+## 14. Known threats to validity
+
+- **Graph-level optimisation differs by runtime.** ORT fused the exported ResNet-50
+  (122 nodes) to 58 on CPU, including a hardware-specific NCHWc layout; eager PyTorch
+  runs the unfused graph. That is part of what a runtime comparison measures and must
+  be stated with it.
+- **Benchmark inputs differ between backends** (PyTorch: `torch.randn`; ORT: numpy).
+  Shape and dtype match; values do not. Must be unified before any cross-backend
+  latency comparison (the correctness check already uses identical inputs).
+- **Thread configuration differs** unless set explicitly (PyTorch recorded 4 intra-op
+  threads; ORT used its own default).
+
 
 Tracked openly, and to be quantified rather than hand-waved once measurement is possible:
 

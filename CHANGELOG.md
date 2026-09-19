@@ -6,6 +6,38 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added — Phase 4: ONNX export and ONNX Runtime backend
+
+- **Reproducible ONNX export** (`gpu-bench onnx export`): dynamo exporter, opset 20
+  pinned, dynamic batch, single self-contained file, with a provenance manifest (model,
+  weights SHA-256, tool versions, exporter settings, I/O spec, artifact SHA-256, git
+  state). Artifacts are validated before use (hash, no external data, `onnx.checker`
+  full check, opset, I/O) and never committed. Re-export is byte-identical.
+- **PyTorch-vs-ONNX Runtime correctness check** (`gpu-bench onnx verify`): identical
+  inputs and weights, pre-registered scale-aware tolerance plus top-1, and an FP16
+  negative control that must fail. Stores `report.json` + raw outputs;
+  `analysis/rederive_correctness.py` re-derives the verdict without importing the tool.
+- **ONNX Runtime backend** (`backend: onnxruntime`) through the existing lifecycle:
+  load = read + hash, build = session creation, prepare = inputs + sanity run + measured
+  node placement. CPU EP executed on real hardware; CUDA EP implemented (IOBinding,
+  `use_tf32=0` for FP32) and **unverified on NVIDIA hardware**.
+- **No silent CUDA→CPU fallback:** availability pre-check, `session.get_providers()`
+  post-check and measured placement. Verified against the real onnxruntime-gpu 1.30,
+  which silently built a CPU session when asked for CUDA without CUDA libraries.
+- `core/inputs.py` (backend-independent synthetic inputs), `core/correctness.py`,
+  `models/torch_loader.py`, ADR 0007, CI job running the headline check end to end.
+- Extras: `[onnx-cpu]`, `[onnx]`, `[onnx-export]`, floored at tested versions. The ORT
+  backend needs Python ≥ 3.11 (onnxruntime 1.30).
+
+### Fixed
+
+- CLI crashed on a Windows cp1252 console on a `Δ` column header (after saving its
+  evidence, so a passing check exited 1). Guarded by a test over all CLI string literals.
+- Rich markup swallowed bracketed text in error messages (`[torch]`, `[onnx-export]`
+  extras disappeared from the console). Error text is now escaped.
+- CPU result note and banner now state the measurements are not suitable for backend
+  performance ranking.
+
 ### Added — Phase 3: PyTorch backend (ResNet-50)
 
 - **PyTorch backend** through the existing lifecycle. CPU path executed on real
