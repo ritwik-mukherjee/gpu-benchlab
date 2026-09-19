@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "0ecad35290e3",
+  "status": "ok",
+  "is_simulated": false,
+  "backend": "onnxruntime",
+  "device_kind": "cpu",
+  "device": "cpu",
+  "precision": "fp32",
+  "batch_size": 1,
+  "timing_mechanism": "wall_clock",
+  "measures_steady_state": true,
+  "phases": {
+    "model_load_ms": 288.3291,
+    "engine_build_ms": 249.8532,
+    "prepare_inputs_ms": 345.896,
+    "warmup_total_ms": 388.3301,
+    "measurement_total_ms": 4887.3294
+  },
+  "latency_ms": {
+    "count": 100,
+    "min_ms": 33.3452,
+    "max_ms": 70.9408,
+    "mean_ms": 48.86833000000001,
+    "median_ms": 48.29075,
+    "stddev_ms": 9.81678595159816,
+    "p50_ms": 48.29075,
+    "p90_ms": 61.72855,
+    "p95_ms": 62.896815,
+    "p99_ms": 64.12267000000003,
+    "percentile_method": "linear",
+    "stddev_ddof": 1,
+    "low_confidence_percentiles": [
+      "p95",
+      "p99"
+    ]
+  },
+  "secondary_timing_mechanism": null,
+  "secondary_latency_ms": null,
+  "throughput": [
+    {
+      "value": 20.463150674475674,
+      "unit": "samples/sec",
+      "basis": "batch_size / mean_latency_s"
+    },
+    {
+      "value": 20.461072257581,
+      "unit": "samples/sec",
+      "basis": "measurement_iterations * batch_size / measurement_total_s"
+    }
+  ],
+  "errors": [],
+  "notes": [
+    "CPU RESULT: measured on the host CPU. This is a real measurement of CPU inference, NOT GPU performance, and must never be compared with a GPU result as a speedup or presented as NVIDIA GPU data. Local CPU measurements; the environment is known to be non-stationary and these measurements are not suitable for backend performance ranking."
+  ]
+}

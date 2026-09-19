@@ -1,0 +1,470 @@
+{
+  "schema_version": "1.0",
+  "report_id": "1d8f04cba5b5",
+  "created_utc": "2026-09-19T04:39:26.014223+00:00",
+  "passed": true,
+  "cases_passed": 9,
+  "cases_total": 9,
+  "negative_control": {
+    "batch_size": 1,
+    "seed": 0,
+    "comparison": {
+      "passed": false,
+      "reasons": [
+        "687 element(s) outside atol + rtol*|ref| (worst at 14.1x the allowed error)"
+      ],
+      "reference_shape": [
+        1,
+        1000
+      ],
+      "candidate_shape": [
+        1,
+        1000
+      ],
+      "reference_dtype": "float32",
+      "candidate_dtype": "float32",
+      "all_finite": true,
+      "rtol": 0.0001,
+      "atol": 0.0005146649837493896,
+      "reference_max_abs": 5.1466498374938965,
+      "max_abs_error": 0.007800787687301636,
+      "mean_abs_error": 0.0011607099547982216,
+      "max_rel_error": 0.3963684673169244,
+      "violations": 687,
+      "worst_violation_ratio": 14.12885868249703,
+      "top1_agreement": 1.0,
+      "top5_overlap": 1.0
+    }
+  },
+  "negative_control_rejected": true,
+  "cases": [
+    {
+      "batch_size": 1,
+      "seed": 0,
+      "comparison": {
+        "passed": true,
+        "reasons": [],
+        "reference_shape": [
+          1,
+          1000
+        ],
+        "candidate_shape": [
+          1,
+          1000
+        ],
+        "reference_dtype": "float32",
+        "candidate_dtype": "float32",
+        "all_finite": true,
+        "rtol": 0.0001,
+        "atol": 0.0005146649837493896,
+        "reference_max_abs": 5.1466498374938965,
+        "max_abs_error": 1.7285346984863281e-6,
+        "mean_abs_error": 2.8824247419834136e-7,
+        "max_rel_error": 0.00009844940602719292,
+        "violations": 0,
+        "worst_violation_ratio": 0.003268133745804118,
+        "top1_agreement": 1.0,
+        "top5_overlap": 1.0
+      }
+    },
+    {
+      "batch_size": 1,
+      "seed": 1,
+      "comparison": {
+        "passed": true,
+        "reasons": [],
+        "reference_shape": [
+          1,
+          1000
+        ],
+        "candidate_shape": [
+          1,
+          1000
+        ],
+        "reference_dtype": "float32",
+        "candidate_dtype": "float32",
+        "all_finite": true,
+        "rtol": 0.0001,
+        "atol": 0.0005125233173370362,
+        "reference_max_abs": 5.125233173370361,
+        "max_abs_error": 2.0563602447509766e-6,
+        "mean_abs_error": 3.7568667903542516e-7,
+        "max_rel_error": 0.00008974517429206078,
+        "violations": 0,
+        "worst_violation_ratio": 0.003685863294407305,
+        "top1_agreement": 1.0,
+        "top5_overlap": 1.0
+      }
+    },
+    {
+      "batch_size": 1,
+      "seed": 2,
+      "comparison": {
+        "passed": true,
+        "reasons": [],
+        "reference_shape": [
+          1,
+          1000
+        ],
+        "candidate_shape": [
+          1,
+          1000
+        ],
+        "reference_dtype": "float32",
+        "candidate_dtype": "float32",
+        "all_finite": true,
+        "rtol": 0.0001,
+        "atol": 0.0005191741466522217,
+        "reference_max_abs": 5.191741466522217,
+        "max_abs_error": 1.773238182067871e-6,
+        "mean_abs_error": 2.559814602136612e-7,
+        "max_rel_error": 0.00005085464048594434,
+        "violations": 0,
+        "worst_violation_ratio": 0.003259311314914235,
+        "top1_agreement": 1.0,
+        "top5_overlap": 1.0
+      }
+    },
+    {
+      "batch_size": 4,
+      "seed": 0,
+      "comparison": {
+        "passed": true,
+        "reasons": [],
+        "reference_shape": [
+          4,
+          1000
+        ],
+        "candidate_shape": [
+          4,
+          1000
+        ],
+        "reference_dtype": "float32",
+        "candidate_dtype": "float32",
+        "all_finite": true,
+        "rtol": 0.0001,
+        "atol": 0.0005239439487457276,
+        "reference_max_abs": 5.239439487457275,
+        "max_abs_error": 2.6226043701171875e-6,
+        "mean_abs_error": 3.1399214640259743e-7,
+        "max_rel_error": 0.00009876593233773898,
+        "violations": 0,
+        "worst_violation_ratio": 0.003207832661243939,
+        "top1_agreement": 1.0,
+        "top5_overlap": 1.0
+      }
+    },
+    {
+      "batch_size": 4,
+      "seed": 1,
+      "comparison": {
+        "passed": true,
+        "reasons": [],
+        "reference_shape": [
+          4,
+          1000
+        ],
+        "candidate_shape": [
+          4,
+          1000
+        ],
+        "reference_dtype": "float32",
+        "candidate_dtype": "float32",
+        "all_finite": true,
+        "rtol": 0.0001,
+        "atol": 0.0005636593341827393,
+        "reference_max_abs": 5.636593341827393,
+        "max_abs_error": 2.205371856689453e-6,
+        "mean_abs_error": 3.535181749612093e-7,
+        "max_rel_error": 0.0001430413857240042,
+        "violations": 0,
+        "worst_violation_ratio": 0.003463772061630203,
+        "top1_agreement": 1.0,
+        "top5_overlap": 1.0
+      }
+    },
+    {
+      "batch_size": 4,
+      "seed": 2,
+      "comparison": {
+        "passed": true,
+        "reasons": [],
+        "reference_shape": [
+          4,
+          1000
+        ],
+        "candidate_shape": [
+          4,
+          1000
+        ],
+        "reference_dtype": "float32",
+        "candidate_dtype": "float32",
+        "all_finite": true,
+        "rtol": 0.0001,
+        "atol": 0.000536933708190918,
+        "reference_max_abs": 5.36933708190918,
+        "max_abs_error": 1.9073486328125e-6,
+        "mean_abs_error": 2.3111695190891625e-7,
+        "max_rel_error": 0.00009539982064833718,
+        "violations": 0,
+        "worst_violation_ratio": 0.0031828039806035048,
+        "top1_agreement": 1.0,
+        "top5_overlap": 1.0
+      }
+    },
+    {
+      "batch_size": 8,
+      "seed": 0,
+      "comparison": {
+        "passed": true,
+        "reasons": [],
+        "reference_shape": [
+          8,
+          1000
+        ],
+        "candidate_shape": [
+          8,
+          1000
+        ],
+        "reference_dtype": "float32",
+        "candidate_dtype": "float32",
+        "all_finite": true,
+        "rtol": 0.0001,
+        "atol": 0.000544567060470581,
+        "reference_max_abs": 5.4456706047058105,
+        "max_abs_error": 2.6226043701171875e-6,
+        "mean_abs_error": 3.1242077238857746e-7,
+        "max_rel_error": 0.00019109345266057822,
+        "violations": 0,
+        "worst_violation_ratio": 0.004439483612988178,
+        "top1_agreement": 1.0,
+        "top5_overlap": 1.0
+      }
+    },
+    {
+      "batch_size": 8,
+      "seed": 1,
+      "comparison": {
+        "passed": true,
+        "reasons": [],
+        "reference_shape": [
+          8,
+          1000
+        ],
+        "candidate_shape": [
+          8,
+          1000
+        ],
+        "reference_dtype": "float32",
+        "candidate_dtype": "float32",
+        "all_finite": true,
+        "rtol": 0.0001,
+        "atol": 0.0005636593341827393,
+        "reference_max_abs": 5.636593341827393,
+        "max_abs_error": 3.0994415283203125e-6,
+        "mean_abs_error": 3.4382069134153426e-7,
+        "max_rel_error": 0.0001430413857240042,
+        "violations": 0,
+        "worst_violation_ratio": 0.004384810570955291,
+        "top1_agreement": 1.0,
+        "top5_overlap": 1.0
+      }
+    },
+    {
+      "batch_size": 8,
+      "seed": 2,
+      "comparison": {
+        "passed": true,
+        "reasons": [],
+        "reference_shape": [
+          8,
+          1000
+        ],
+        "candidate_shape": [
+          8,
+          1000
+        ],
+        "reference_dtype": "float32",
+        "candidate_dtype": "float32",
+        "all_finite": true,
+        "rtol": 0.0001,
+        "atol": 0.000536933708190918,
+        "reference_max_abs": 5.36933708190918,
+        "max_abs_error": 2.682209014892578e-6,
+        "mean_abs_error": 2.656511205714196e-7,
+        "max_rel_error": 0.0001052089820035771,
+        "violations": 0,
+        "worst_violation_ratio": 0.0042499115735065264,
+        "top1_agreement": 1.0,
+        "top5_overlap": 1.0
+      }
+    }
+  ],
+  "rtol": 0.0001,
+  "atol_scale": 0.0001,
+  "input_generator": "numpy.random.default_rng(seed).standard_normal(shape, dtype=float32)",
+  "artifact_sha256": "32dbc686334c82cc01b22c5512ce74cbd26659f2eda82f9f547d6d7ee838a263",
+  "weights_sha256": "11ad3fa62ca79e40addfd354a8ec4b7c75143b3038b8d2a807fbc68deab379ca",
+  "manifest": {
+    "schema_version": "1.0",
+    "created_utc": "2026-09-19T04:23:31.622196+00:00",
+    "artifact": {
+      "filename": "resnet50-IMAGENET1K_V2-opset20-dynbatch.onnx",
+      "sha256": "32dbc686334c82cc01b22c5512ce74cbd26659f2eda82f9f547d6d7ee838a263",
+      "bytes": 102348581
+    },
+    "model": {
+      "name": "resnet50",
+      "architecture": "ResNet",
+      "source": "torchvision.models.resnet50 (ResNet v1.5)",
+      "weights": "IMAGENET1K_V2",
+      "weights_url": "https://download.pytorch.org/models/resnet50-11ad3fa6.pth",
+      "weights_sha256": "11ad3fa62ca79e40addfd354a8ec4b7c75143b3038b8d2a807fbc68deab379ca",
+      "random_init_seed": null,
+      "parameter_count": 25557032,
+      "expected_parameter_count": 25557032
+    },
+    "exporter": {
+      "exporter": "torch.onnx.export(dynamo=True)",
+      "torch_version": "2.14.0+cpu",
+      "torchvision_version": "0.29.0+cpu",
+      "onnx_version": "1.23.0",
+      "onnxscript_version": "0.7.2",
+      "opset": 20,
+      "optimize": true,
+      "external_data": false,
+      "dynamic_shapes": {
+        "input": {
+          "0": "batch"
+        }
+      },
+      "trace_batch_size": 1,
+      "trace_input_generator": "numpy.random.default_rng(seed).standard_normal(shape, dtype=float32)",
+      "trace_input_seed": 0
+    },
+    "input": {
+      "name": "input",
+      "dtype": "float32",
+      "shape": [
+        "batch",
+        3,
+        224,
+        224
+      ]
+    },
+    "output": {
+      "name": "logits",
+      "dtype": "float32",
+      "shape": [
+        "batch",
+        1000
+      ]
+    },
+    "export_seconds": 9.593476899986854,
+    "provenance": {
+      "benchlab_version": "0.1.0",
+      "git_commit": "cd992a8f8efd8d495c9b8970bf0726d153f12de7",
+      "git_dirty": true
+    }
+  },
+  "reference": {
+    "runtime": "pytorch",
+    "version": "2.14.0+cpu",
+    "device": "cpu",
+    "detail": {
+      "dtype": "float32",
+      "mode": "eager, inference_mode",
+      "threads": 4
+    }
+  },
+  "candidate": {
+    "runtime": "onnxruntime",
+    "version": "1.30.0",
+    "device": "cpu",
+    "detail": {
+      "requested_provider": "CPUExecutionProvider",
+      "active_providers": "CPUExecutionProvider",
+      "graph_optimization_level": "all",
+      "node_placement.CPUExecutionProvider": 58
+    }
+  },
+  "environment": {
+    "schema_version": "1.1",
+    "timestamp_utc": "2026-09-19T04:39:26.016231+00:00",
+    "benchlab_version": "0.1.0",
+    "host": {
+      "hostname": "DESKTOP-GJH8ALQ",
+      "os_name": "Windows",
+      "os_version": "10.0.26200",
+      "os_release": "11",
+      "architecture": "AMD64",
+      "cpu_model": "Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",
+      "cpu_physical_cores": 4,
+      "cpu_logical_cores": 8,
+      "total_memory_bytes": 16976740352,
+      "python_version": "3.12.10",
+      "python_implementation": "CPython",
+      "python_executable": "C:\\Claude2\\GPU INFERENCE PROJECT\\.venv\\Scripts\\python.exe",
+      "power_plugged": true,
+      "battery_percent": 98.0
+    },
+    "nvml": {
+      "driver_version": null,
+      "nvml_version": null,
+      "cuda_driver_version": null
+    },
+    "gpus": [],
+    "frameworks": [
+      {
+        "name": "torch",
+        "available": true,
+        "version": "2.14.0+cpu",
+        "cuda_available": false,
+        "cuda_version": null,
+        "device_count": 0,
+        "providers": null,
+        "detail": "CPU-only build: this wheel has no CUDA support compiled in."
+      },
+      {
+        "name": "onnxruntime",
+        "available": true,
+        "version": "1.30.0",
+        "cuda_available": false,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": [
+          "AzureExecutionProvider",
+          "CPUExecutionProvider"
+        ],
+        "detail": "CPU-only install: no CUDA or TensorRT execution provider registered."
+      },
+      {
+        "name": "tensorrt",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'tensorrt')."
+      },
+      {
+        "name": "tensorrt_llm",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'tensorrt_llm')."
+      }
+    ],
+    "detection_status": "driver_unavailable",
+    "detection_error": "NVML could not be loaded. This normally means no NVIDIA driver is installed on this machine. Underlying error: NVML Shared Library Not Found"
+  },
+  "provenance": {
+    "benchlab_version": "0.1.0",
+    "git_commit": "cd992a8f8efd8d495c9b8970bf0726d153f12de7",
+    "git_dirty": true
+  }
+}

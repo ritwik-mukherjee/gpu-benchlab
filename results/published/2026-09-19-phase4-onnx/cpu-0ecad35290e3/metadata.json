@@ -1,0 +1,166 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "0ecad35290e3",
+  "group_id": null,
+  "repeat_index": 0,
+  "timestamp_utc": "2026-09-19T04:40:15.071900+00:00",
+  "status": "ok",
+  "is_simulated": false,
+  "device_kind": "cpu",
+  "configuration": {
+    "name": "resnet50-onnxruntime-cpu-fp32",
+    "description": null,
+    "model": {
+      "name": "resnet50",
+      "source": null,
+      "revision": null,
+      "format": null,
+      "input_shape": null,
+      "sequence_length": null,
+      "weights": "IMAGENET1K_V2",
+      "seed": 0
+    },
+    "backend": "onnxruntime",
+    "precision": "fp32",
+    "batch_size": 1,
+    "device": "cpu",
+    "backend_options": {},
+    "benchmark": {
+      "warmup_iterations": 10,
+      "measurement_iterations": 100,
+      "repeats": 1
+    }
+  },
+  "model_info": {
+    "name": "resnet50",
+    "architecture": "ResNet",
+    "source": "torchvision.models.resnet50 (ResNet v1.5)",
+    "weights": "IMAGENET1K_V2",
+    "weights_url": "https://download.pytorch.org/models/resnet50-11ad3fa6.pth",
+    "weights_sha256": "11ad3fa62ca79e40addfd354a8ec4b7c75143b3038b8d2a807fbc68deab379ca",
+    "random_init_seed": null,
+    "parameter_count": 25557032,
+    "expected_parameter_count": 25557032
+  },
+  "backend": {
+    "name": "onnxruntime",
+    "version": "1.30.0",
+    "execution_provider": "CPUExecutionProvider",
+    "device": "cpu",
+    "device_kind": "cpu",
+    "settings": {
+      "device": "cpu",
+      "requested_provider": "CPUExecutionProvider",
+      "requested_precision": "fp32",
+      "graph_optimization_level": "all",
+      "intra_op_num_threads": null,
+      "inter_op_num_threads": null,
+      "input_generator": "numpy.random.default_rng(seed).standard_normal(shape, dtype=float32)",
+      "input_seed": 0,
+      "onnxruntime_version": "1.30.0",
+      "available_providers": "AzureExecutionProvider,CPUExecutionProvider",
+      "artifact_exported_this_run": false,
+      "artifact_filename": "resnet50-IMAGENET1K_V2-opset20-dynbatch.onnx",
+      "artifact_sha256": "32dbc686334c82cc01b22c5512ce74cbd26659f2eda82f9f547d6d7ee838a263",
+      "opset": 20,
+      "dynamic_batch": true,
+      "exporter_torch_version": "2.14.0+cpu",
+      "exporter_onnx_version": "1.23.0",
+      "input_name": "input",
+      "input_dtype": "float32",
+      "active_providers": "CPUExecutionProvider",
+      "input_shape": "1x3x224x224",
+      "node_placement.CPUExecutionProvider": 58,
+      "node_placement_method": "ORT profiling, identical session options",
+      "io_binding": false,
+      "sanity_check": "passed",
+      "timing_note": "host wall clock around session.run; ORT returns after execution completes"
+    },
+    "is_simulated": false,
+    "detail": "ONNX Runtime, CPU execution provider. Real measurements of the host CPU, not GPU performance."
+  },
+  "environment": {
+    "schema_version": "1.1",
+    "timestamp_utc": "2026-09-19T04:40:05.759741+00:00",
+    "benchlab_version": "0.1.0",
+    "host": {
+      "hostname": "DESKTOP-GJH8ALQ",
+      "os_name": "Windows",
+      "os_version": "10.0.26200",
+      "os_release": "11",
+      "architecture": "AMD64",
+      "cpu_model": "Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",
+      "cpu_physical_cores": 4,
+      "cpu_logical_cores": 8,
+      "total_memory_bytes": 16976740352,
+      "python_version": "3.12.10",
+      "python_implementation": "CPython",
+      "python_executable": "C:\\Claude2\\GPU INFERENCE PROJECT\\.venv\\Scripts\\python.exe",
+      "power_plugged": true,
+      "battery_percent": 98.0
+    },
+    "nvml": {
+      "driver_version": null,
+      "nvml_version": null,
+      "cuda_driver_version": null
+    },
+    "gpus": [],
+    "frameworks": [
+      {
+        "name": "torch",
+        "available": true,
+        "version": "2.14.0+cpu",
+        "cuda_available": false,
+        "cuda_version": null,
+        "device_count": 0,
+        "providers": null,
+        "detail": "CPU-only build: this wheel has no CUDA support compiled in."
+      },
+      {
+        "name": "onnxruntime",
+        "available": true,
+        "version": "1.30.0",
+        "cuda_available": false,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": [
+          "AzureExecutionProvider",
+          "CPUExecutionProvider"
+        ],
+        "detail": "CPU-only install: no CUDA or TensorRT execution provider registered."
+      },
+      {
+        "name": "tensorrt",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'tensorrt')."
+      },
+      {
+        "name": "tensorrt_llm",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'tensorrt_llm')."
+      }
+    ],
+    "detection_status": "driver_unavailable",
+    "detection_error": "NVML could not be loaded. This normally means no NVIDIA driver is installed on this machine. Underlying error: NVML Shared Library Not Found"
+  },
+  "timing_mechanism": "wall_clock",
+  "measures_steady_state": true,
+  "provenance": {
+    "benchlab_version": "0.1.0",
+    "git_commit": "cd992a8f8efd8d495c9b8970bf0726d153f12de7",
+    "git_dirty": true
+  },
+  "notes": [
+    "CPU RESULT: measured on the host CPU. This is a real measurement of CPU inference, NOT GPU performance, and must never be compared with a GPU result as a speedup or presented as NVIDIA GPU data. Local CPU measurements; the environment is known to be non-stationary and these measurements are not suitable for backend performance ranking."
+  ]
+}
