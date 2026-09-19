@@ -188,3 +188,51 @@ jobs:
           print('CUDA request correctly unavailable; no fallback.')
           "
 
+  # ONNX export + ONNX Runtime (CPU EP). Runs the Phase 4 headline end to end:
+  # export the pinned ResNet-50, check ORT against PyTorch on identical inputs
+  # (including the FP16 negative control), then re-derive the verdict from the stored
+  # outputs with a script that imports nothing from gpu_benchlab.
+  # onnxruntime 1.30 requires Python >= 3.11. No NVIDIA GPU on hosted runners: the
+  # CUDA EP path stays covered by real-fallback and structural tests only.
+  test-onnx-cpu:
+    name: onnx-cpu (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install project, CPU PyTorch and ONNX stack
+        run: |
+          uv pip install --system -e ".[dev,onnx-cpu]" onnxscript
+          uv pip install --system torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Fetch pinned ResNet-50 weights (SHA-256 verified)
+        run: gpu-bench models fetch resnet50
+
+      - name: ONNX tests (must run, not skip)
+        shell: bash
+        run: |
+          pytest -m onnx -v -rs | tee onnx-tests.log
+          if grep -q "SKIPPED.*could not import" onnx-tests.log; then
+            echo "::error::ONNX tests were skipped even though the stack is installed"
+            exit 1
+          fi
+
+      - name: PyTorch vs ONNX Runtime correctness, independently re-derived
+        shell: bash
+        run: |
+          gpu-bench onnx verify resnet50 --results-dir ci-results
+          python analysis/rederive_correctness.py ci-results/correctness-*
+
