@@ -60,7 +60,9 @@ SIMULATION_WARNING = (
 CPU_RESULT_NOTE = (
     "CPU RESULT: measured on the host CPU. This is a real measurement of CPU "
     "inference, NOT GPU performance, and must never be compared with a GPU result "
-    "as a speedup or presented as NVIDIA GPU data."
+    "as a speedup or presented as NVIDIA GPU data. Local CPU measurements; the "
+    "environment is known to be non-stationary and these measurements are not "
+    "suitable for backend performance ranking."
 )
 
 NO_WARMUP_WARNING = (

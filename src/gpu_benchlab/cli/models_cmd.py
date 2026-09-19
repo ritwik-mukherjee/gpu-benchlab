@@ -6,6 +6,7 @@ from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from gpu_benchlab.core.errors import BenchLabError, ConfigurationError
@@ -56,7 +57,7 @@ def fetch_command(
             raise ConfigurationError("'random' weights need no download.")
         resolved = ensure_weights(spec.weights[weights_id])
     except BenchLabError as exc:
-        console.print(f"[red]{type(exc).__name__}:[/red] {exc}")
+        console.print(f"[red]{type(exc).__name__}:[/red] {escape(str(exc))}")
         raise typer.Exit(1) from exc
 
     state = "downloaded" if resolved.downloaded else "already cached"
