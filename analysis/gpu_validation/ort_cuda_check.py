@@ -83,8 +83,14 @@ def main() -> None:
     parser.add_argument("out_dir", type=Path)
     parser.add_argument("--batch", type=int, default=8)
     parser.add_argument("--import-torch-first", action="store_true")
+    parser.add_argument(
+        "--preload-dlls",
+        action="store_true",
+        help="call onnxruntime.preload_dlls() first, as the backend now does",
+    )
     args = parser.parse_args()
     tag = f"b{args.batch}-{'torch-first' if args.import_torch_first else 'no-torch'}"
+    tag += "-preload" if args.preload_dlls else ""
     out_dir: Path = args.out_dir / tag
     out_dir.mkdir(parents=True, exist_ok=True)
     checks = Checks("ort_cuda_check")
@@ -101,6 +107,17 @@ def main() -> None:
     from gpu_benchlab.core.inputs import synthetic_input
     from gpu_benchlab.export.onnx_export import ExportConfig, ensure_artifact
     from gpu_benchlab.models.registry import get_model
+
+    if args.preload_dlls:
+        preload = getattr(ort, "preload_dlls", None)
+        checks.add(
+            "P0",
+            INFO,
+            "onnxruntime.preload_dlls() called, mirroring the backend",
+            available=preload is not None,
+        )
+        if preload is not None:
+            preload()
 
     weights = get_model("resnet50").resolve_weights(None)
     artifact, manifest, _ = ensure_artifact(
