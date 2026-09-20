@@ -317,7 +317,7 @@ def main() -> None:
         and not stored[0]["raw_samples"]["latency_ms"],
         "CUDA hidden: unavailable/failed with zero samples (no silent CPU session)",
         exit_code=done.returncode,
-        status=[s["status"] for s in stored],
+        stored_status=[s["status"] for s in stored],
         errors=[s.get("errors") for s in stored],
     )
     checks.add(

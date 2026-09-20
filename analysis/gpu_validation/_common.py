@@ -27,12 +27,14 @@ class Checks:
         self.script = script
         self.items: list[dict[str, Any]] = []
 
-    def add(self, check_id: str, status: str, description: str, **evidence: Any) -> None:
+    def add(self, check_id: str, status: str, description: str, /, **evidence: Any) -> None:
+        """Record one check. The first three are positional-only, so any evidence key
+        (including "status") is safe to pass."""
         self.items.append(
             {"id": check_id, "status": status, "description": description, "evidence": evidence}
         )
 
-    def expect(self, check_id: str, condition: bool, description: str, **evidence: Any) -> None:
+    def expect(self, check_id: str, condition: bool, description: str, /, **evidence: Any) -> None:
         self.add(check_id, PASS if condition else FAIL, description, **evidence)
 
     def finish(self, out_dir: Path, extra: dict[str, Any] | None = None) -> NoReturn:

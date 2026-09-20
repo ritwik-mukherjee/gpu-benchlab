@@ -341,7 +341,7 @@ def negative(checks: Checks, out_dir: Path) -> None:
         ok,
         "CUDA hidden: result is unavailable/failed with zero samples (no CPU fallback)",
         exit_code=done.returncode,
-        status=[s["status"] for s in stored],
+        stored_status=[s["status"] for s in stored],
         errors=[s.get("errors") for s in stored],
         stdout_tail=done.stdout[-2000:],
     )
