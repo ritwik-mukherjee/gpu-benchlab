@@ -44,14 +44,18 @@ uv pip install torch
 `torchvision 0.29.0+cpu`. Download ≈ 136 MiB (torch 118.3 MiB, torchvision 1.3 MiB, plus
 sympy, pillow, networkx, setuptools); 511.9 MB added to site-packages; 175 s.
 
-For a different CUDA build, use PyTorch's own index:
+For a different CUDA build, use PyTorch's own index — but check that it carries the
+version you need. **Checked 2026-09-19:** torch 2.14.0 (the version Phases 3–4 used) was
+on `cu126`, `cu130` and `cu132` (Linux and Windows, cp312); `cu129` stopped at 2.13.0
+(Linux only) and `cu128` at **2.11.0**, so an unpinned install from `cu128` silently gives
+an older torch. Pin the version:
 
 ```bash
-# CUDA 12.8
-uv pip install torch --index-url https://download.pytorch.org/whl/cu128
+# CUDA 12.6 (driver R525+ under CUDA 12 minor-version compatibility)
+uv pip install torch==2.14.0 torchvision==0.29.0 --index-url https://download.pytorch.org/whl/cu126
 
-# CUDA 13.0
-uv pip install torch --index-url https://download.pytorch.org/whl/cu130
+# CUDA 13.0 (driver R580+; required anyway by onnxruntime-gpu 1.30) -- the GPU runbook's choice
+uv pip install torch==2.14.0 torchvision==0.29.0 --index-url https://download.pytorch.org/whl/cu130
 
 # CPU only (harness validation; NOT for performance data)
 uv pip install torch --index-url https://download.pytorch.org/whl/cpu

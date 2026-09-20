@@ -1,0 +1,19 @@
+# Phase 5A runbook §11 controlled benchmark (docs/runbooks/gpu-validation.md). NOT YET RUN on NVIDIA hardware.
+# On a machine without CUDA this ends status: unavailable -- never a CPU run.
+# Common configuration (runbook §11). warmup_iterations is pre-registered as 100;
+# if §6 finds any settle iteration k > 50, set it to 2k in ALL controlled configs
+# and record that change before the first §11 run.
+name: p5a-controlled-pytorch-cuda-fp32-b1
+backend: pytorch
+device: cuda:0
+precision: fp32
+batch_size: 1
+model:
+  name: resnet50
+  weights: IMAGENET1K_V2
+backend_options:
+  cudnn_benchmark: true
+  channels_last: false
+benchmark:
+  warmup_iterations: 100
+  measurement_iterations: 1000

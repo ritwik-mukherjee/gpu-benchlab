@@ -1,0 +1,18 @@
+# Phase 5A runbook §11 controlled benchmark (docs/runbooks/gpu-validation.md). NOT YET RUN on NVIDIA hardware.
+# On a machine without CUDA this ends status: unavailable -- never a CPU run.
+# Common configuration (runbook §11); see the PyTorch twin for the warmup rule.
+name: p5a-controlled-onnxruntime-cuda-fp32-b1
+backend: onnxruntime
+device: cuda:0
+precision: fp32
+batch_size: 1
+model:
+  name: resnet50
+  weights: IMAGENET1K_V2
+backend_options:
+  use_io_binding: true
+  cudnn_conv_algo_search: EXHAUSTIVE
+  allow_export: false
+benchmark:
+  warmup_iterations: 100
+  measurement_iterations: 1000

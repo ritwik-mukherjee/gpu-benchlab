@@ -51,7 +51,9 @@ The development machine (Intel Core i7-8565U, Intel UHD 620 only) has **no NVIDI
 
 ## 2. What has NOT been executed on real NVIDIA hardware (category C)
 
-Implemented and structurally tested; **unverified**.
+Implemented and structurally tested; **unverified**. The procedure and pre-registered
+success criteria for validating each item are in
+[runbooks/gpu-validation.md](runbooks/gpu-validation.md) (not yet executed).
 
 | Item | How it was tested | What is unknown |
 |---|---|---|

@@ -6,6 +6,21 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added — Phase 5A preparation: GPU validation runbook (not yet executed)
+
+- `docs/runbooks/gpu-validation.md`: the procedure for validating NVML, the PyTorch CUDA
+  path, `CudaEventTimer`, warmup, CPU-vs-CUDA and PyTorch-vs-ORT correctness, the ORT
+  CUDA EP, telemetry and a small controlled benchmark on the first NVIDIA machine, with
+  pre-registered success criteria. **Nothing in it has run on NVIDIA hardware.**
+- `analysis/gpu_validation/`: the scripts and configs the runbook uses. They are
+  validation procedures, not benchmark features; on the development machine only their
+  refusal paths (and the analysis scripts, on CPU data) have been executed.
+
+### Fixed
+
+- `docs/environment.md` suggested the `cu128` PyTorch index, which stops at torch 2.11.0;
+  the documented commands now pin 2.14.0 on indexes that carry it.
+
 ### Added — Phase 4: ONNX export and ONNX Runtime backend
 
 - **Reproducible ONNX export** (`gpu-bench onnx export`): dynamo exporter, opset 20

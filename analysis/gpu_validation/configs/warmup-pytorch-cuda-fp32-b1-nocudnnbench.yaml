@@ -1,0 +1,18 @@
+# Phase 5A runbook §6 warmup trajectory (docs/runbooks/gpu-validation.md). NOT YET RUN on NVIDIA hardware.
+# On a machine without CUDA this ends status: unavailable -- never a CPU run.
+# 300 warmup + 1000 measured: every warmup sample is stored (raw.json), so the
+# trajectory can be analysed; cudnn_benchmark=false isolates autotuning.
+name: p5a-warmup-pytorch-cuda-fp32-b1-nocudnnbench
+backend: pytorch
+device: cuda:0
+precision: fp32
+batch_size: 1
+model:
+  name: resnet50
+  weights: IMAGENET1K_V2
+backend_options:
+  cudnn_benchmark: false
+  channels_last: false
+benchmark:
+  warmup_iterations: 300
+  measurement_iterations: 1000
