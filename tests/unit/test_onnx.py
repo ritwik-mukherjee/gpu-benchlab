@@ -561,6 +561,28 @@ def gpu_env(environment, cc: tuple[int, int] | None):
     return environment.model_copy(update={"gpus": [gpu]})
 
 
+class TestPreloadCudaLibraries:
+    """STRUCTURAL: the CUDA EP can build a session and still fail at the first Conv
+    because cuDNN was never dlopen'd (observed on an L4 when torch was not imported
+    first). The backend therefore loads the libraries itself and records the outcome."""
+
+    def test_reports_ok_and_calls_preload(self) -> None:
+        calls: list[bool] = []
+        fake = SimpleNamespace(preload_dlls=lambda: calls.append(True))
+        assert ort_backend.preload_cuda_libraries(fake) == "ok"
+        assert calls == [True]
+
+    def test_missing_api_is_reported_not_raised(self) -> None:
+        assert "unavailable" in ort_backend.preload_cuda_libraries(SimpleNamespace())
+
+    def test_failure_is_reported_not_raised(self) -> None:
+        def boom() -> None:
+            raise OSError("no libcudnn.so")
+
+        result = ort_backend.preload_cuda_libraries(SimpleNamespace(preload_dlls=boom))
+        assert result.startswith("failed: OSError") and "libcudnn" in result
+
+
 class TestCudaStructural:
     """STRUCTURAL: wiring of the CUDA path against a fake ORT. Not GPU evidence."""
 

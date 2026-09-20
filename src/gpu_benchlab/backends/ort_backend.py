@@ -131,6 +131,26 @@ def _import_ort() -> Any:
     return onnxruntime
 
 
+def preload_cuda_libraries(ort: Any) -> str:
+    """Load CUDA/cuDNN from the installed ``nvidia-*`` wheels. Returns what happened.
+
+    Without this, ONNX Runtime's CUDA EP builds a session that reports itself active
+    and then fails at the first Conv with ``dlopen failed for libcudnn.so`` -- unless
+    something else in the process (importing torch) already loaded cuDNN. Observed on
+    an NVIDIA L4 with onnxruntime-gpu 1.30 (2026-09-20): the same script passed with
+    torch imported first and failed without it. Relying on import order is not a
+    contract, so the backend loads the libraries itself.
+    """
+    preload = getattr(ort, "preload_dlls", None)
+    if preload is None:
+        return "unavailable: this onnxruntime has no preload_dlls"
+    try:
+        preload()
+    except Exception as exc:  # noqa: BLE001 - never fail a run over a best-effort preload
+        return f"failed: {type(exc).__name__}: {exc}"
+    return "ok"
+
+
 def session_options(ort: Any, options: OrtOptions, *, profile_prefix: str | None = None) -> Any:
     """The SessionOptions every session for these options uses (benchmark, probe, verify)."""
     so = ort.SessionOptions()
@@ -164,6 +184,8 @@ def create_session(
             ORT substituted another EP (observed with onnxruntime-gpu on a machine
             without CUDA: the session silently ran on CPU).
     """
+    if provider == CUDA_EP:
+        preload_cuda_libraries(ort)
     so = session_options(ort, options, profile_prefix=profile_prefix)
     session = ort.InferenceSession(model, so, providers=[(provider, provider_options)])
     active = list(session.get_providers())
@@ -331,6 +353,10 @@ class OnnxRuntimeBackend(Backend):
             )
 
         if self._device_kind is DeviceKind.CUDA:
+            # Recorded, because whether cuDNN was loadable decides whether the EP can
+            # execute at all -- a session can report CUDA active and still fail at the
+            # first Conv (observed on an L4).
+            self._settings["cuda_libraries_preloaded"] = preload_cuda_libraries(ort)
             self._provider_options = self._cuda_provider_options(environment)
         elif self._precision is Precision.TF32:
             raise UnsupportedConfigurationError(

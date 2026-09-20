@@ -165,7 +165,18 @@ def main() -> None:
     binding = session.io_binding()
     binding.bind_ortvalue_input(manifest.input.name, x_gpu)
     binding.bind_output(manifest.output.name, "cuda", 0)
-    session.run_with_iobinding(binding)
+    try:
+        session.run_with_iobinding(binding)
+    except Exception as exc:  # noqa: BLE001 - the failure IS the evidence
+        checks.add(
+            "O4x",
+            FAIL,
+            "the session reported the CUDA EP but could not execute (e.g. cuDNN not "
+            "loadable in this process)",
+            error=f"{type(exc).__name__}: {exc}",
+            libraries=loaded_libraries("libcudnn", "libcublas", "libonnxruntime_providers_cuda"),
+        )
+        checks.finish(out_dir)
     bound = binding.get_outputs()[0]
     checks.expect(
         "O5",
