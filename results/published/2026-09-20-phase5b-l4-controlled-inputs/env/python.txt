@@ -1,0 +1,3 @@
+$ python -VV
+analysis/gpu_validation/collect_env.sh: line 14: python: command not found
+[exit 127]

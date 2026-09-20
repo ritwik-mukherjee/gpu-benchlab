@@ -1,0 +1,101 @@
+{
+  "file": "results/phase5b-raw/telemetry/ctl-pytorch-b1-r5.csv",
+  "requested_interval_ms": 100.0,
+  "gpu0": {
+    "samples": 160,
+    "window": [
+      "2026-09-20T15:11:57.605000",
+      "2026-09-20T15:12:13.794000"
+    ],
+    "achieved_interval_ms": {
+      "median": 102.0,
+      "max": 124.0
+    },
+    "fields": {
+      "pstate": {
+        "distinct": [
+          "P0"
+        ]
+      },
+      "utilization.gpu": {
+        "min": 0.0,
+        "median": 0.0,
+        "max": 99.0,
+        "missing": 0
+      },
+      "utilization.memory": {
+        "min": 0.0,
+        "median": 0.0,
+        "max": 30.0,
+        "missing": 0
+      },
+      "memory.used": {
+        "min": 0.0,
+        "median": 260.0,
+        "max": 1442.0,
+        "missing": 0
+      },
+      "memory.total": {
+        "min": 23034.0,
+        "median": 23034.0,
+        "max": 23034.0,
+        "missing": 0
+      },
+      "temperature.gpu": {
+        "min": 73.0,
+        "median": 74.0,
+        "max": 78.0,
+        "missing": 0
+      },
+      "power.draw": {
+        "min": 31.81,
+        "median": 34.875,
+        "max": 64.72,
+        "missing": 0
+      },
+      "enforced.power.limit": {
+        "min": 72.0,
+        "median": 72.0,
+        "max": 72.0,
+        "missing": 0
+      },
+      "clocks.current.sm": {
+        "min": 405.0,
+        "median": 2040.0,
+        "max": 2040.0,
+        "missing": 0
+      },
+      "clocks.current.memory": {
+        "min": 6251.0,
+        "median": 6251.0,
+        "max": 6251.0,
+        "missing": 0
+      },
+      "clocks.max.sm": {
+        "min": 2040.0,
+        "median": 2040.0,
+        "max": 2040.0,
+        "missing": 0
+      },
+      "clocks_event_reasons.active": {
+        "distinct": [
+          "0x0000000000000000",
+          "0x0000000000000001"
+        ]
+      }
+    },
+    "clock_event_reasons": {
+      "0x0000000000000000": {
+        "samples": 110,
+        "decoded": []
+      },
+      "0x0000000000000001": {
+        "samples": 50,
+        "decoded": [
+          "GpuIdle"
+        ]
+      }
+    },
+    "adequate_for_run_level_context": true
+  }
+}

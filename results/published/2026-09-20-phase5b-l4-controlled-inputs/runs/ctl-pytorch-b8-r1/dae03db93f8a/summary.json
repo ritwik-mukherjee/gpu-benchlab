@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "dae03db93f8a",
+  "status": "ok",
+  "is_simulated": false,
+  "backend": "pytorch",
+  "device_kind": "cuda",
+  "device": "cuda:0",
+  "precision": "fp32",
+  "batch_size": 8,
+  "timing_mechanism": "cuda_event",
+  "measures_steady_state": true,
+  "phases": {
+    "model_load_ms": 2117.666369,
+    "engine_build_ms": 0.008921,
+    "prepare_inputs_ms": 653.183927,
+    "warmup_total_ms": 1127.220238,
+    "measurement_total_ms": 11520.739602
+  },
+  "latency_ms": {
+    "count": 1000,
+    "min_ms": 10.950655937194824,
+    "max_ms": 11.807744026184082,
+    "mean_ms": 11.453009843826294,
+    "median_ms": 11.483136177062988,
+    "stddev_ms": 0.12473134309665068,
+    "p50_ms": 11.483136177062988,
+    "p90_ms": 11.586662578582764,
+    "p95_ms": 11.615232467651367,
+    "p99_ms": 11.707391738891602,
+    "percentile_method": "linear",
+    "stddev_ddof": 1,
+    "low_confidence_percentiles": []
+  },
+  "secondary_timing_mechanism": "wall_clock_synchronized",
+  "secondary_latency_ms": {
+    "count": 1000,
+    "min_ms": 10.965263,
+    "max_ms": 11.825002,
+    "mean_ms": 11.469765789,
+    "median_ms": 11.499060499999999,
+    "stddev_ms": 0.12492225670572449,
+    "p50_ms": 11.499060499999999,
+    "p90_ms": 11.6042774,
+    "p95_ms": 11.633716249999999,
+    "p99_ms": 11.72387681,
+    "percentile_method": "linear",
+    "stddev_ddof": 1,
+    "low_confidence_percentiles": []
+  },
+  "throughput": [
+    {
+      "value": 698.5063410481895,
+      "unit": "samples/sec",
+      "basis": "batch_size / mean_latency_s"
+    },
+    {
+      "value": 694.3998628882473,
+      "unit": "samples/sec",
+      "basis": "measurement_iterations * batch_size / measurement_total_s"
+    }
+  ],
+  "errors": [],
+  "notes": []
+}

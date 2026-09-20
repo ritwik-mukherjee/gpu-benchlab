@@ -1,0 +1,109 @@
+{
+  "file": "results/phase5b-raw/telemetry/ctl-pytorch-b1-r2.csv",
+  "requested_interval_ms": 100.0,
+  "gpu0": {
+    "samples": 175,
+    "window": [
+      "2026-09-20T15:08:20.631000",
+      "2026-09-20T15:08:38.365000"
+    ],
+    "achieved_interval_ms": {
+      "median": 102.0,
+      "max": 108.0
+    },
+    "fields": {
+      "pstate": {
+        "distinct": [
+          "P0",
+          "P8"
+        ]
+      },
+      "utilization.gpu": {
+        "min": 0.0,
+        "median": 0.0,
+        "max": 100.0,
+        "missing": 0
+      },
+      "utilization.memory": {
+        "min": 0.0,
+        "median": 0.0,
+        "max": 31.0,
+        "missing": 0
+      },
+      "memory.used": {
+        "min": 0.0,
+        "median": 260.0,
+        "max": 1442.0,
+        "missing": 0
+      },
+      "memory.total": {
+        "min": 23034.0,
+        "median": 23034.0,
+        "max": 23034.0,
+        "missing": 0
+      },
+      "temperature.gpu": {
+        "min": 60.0,
+        "median": 63.0,
+        "max": 66.0,
+        "missing": 0
+      },
+      "power.draw": {
+        "min": 18.59,
+        "median": 31.65,
+        "max": 60.99,
+        "missing": 0
+      },
+      "enforced.power.limit": {
+        "min": 72.0,
+        "median": 72.0,
+        "max": 72.0,
+        "missing": 0
+      },
+      "clocks.current.sm": {
+        "min": 210.0,
+        "median": 2040.0,
+        "max": 2040.0,
+        "missing": 0
+      },
+      "clocks.current.memory": {
+        "min": 405.0,
+        "median": 6251.0,
+        "max": 6251.0,
+        "missing": 0
+      },
+      "clocks.max.sm": {
+        "min": 2040.0,
+        "median": 2040.0,
+        "max": 2040.0,
+        "missing": 0
+      },
+      "clocks_event_reasons.active": {
+        "distinct": [
+          "0x0000000000000000",
+          "0x0000000000000001",
+          "0x0000000000000004"
+        ]
+      }
+    },
+    "clock_event_reasons": {
+      "0x0000000000000000": {
+        "samples": 102,
+        "decoded": []
+      },
+      "0x0000000000000001": {
+        "samples": 69,
+        "decoded": [
+          "GpuIdle"
+        ]
+      },
+      "0x0000000000000004": {
+        "samples": 4,
+        "decoded": [
+          "SwPowerCap"
+        ]
+      }
+    },
+    "adequate_for_run_level_context": true
+  }
+}
