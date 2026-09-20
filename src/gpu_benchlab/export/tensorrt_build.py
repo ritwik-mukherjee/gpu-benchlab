@@ -247,9 +247,7 @@ def build_engine(
     shapes = config.profile(chw)
     profile = builder.create_optimization_profile()
     input_name = network.get_input(0).name
-    profile.set_shape(
-        input_name, tuple(shapes["min"]), tuple(shapes["opt"]), tuple(shapes["max"])
-    )
+    profile.set_shape(input_name, tuple(shapes["min"]), tuple(shapes["opt"]), tuple(shapes["max"]))
     builder_config.add_optimization_profile(profile)
 
     settings: dict[str, str | int | bool | None] = {

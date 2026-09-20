@@ -338,7 +338,10 @@ class TensorRtBackend(Backend):
 
         host_input = synthetic_input(shape, self._seed)
         out_shape = (config.batch_size, *self._spec.output_shape)
-        self._host_output = np.empty(out_shape, dtype=np.float32)
+        # Pre-filled with NaN, not np.empty: the sanity check below rejects non-finite
+        # values, so a device-to-host copy that never happens fails deterministically
+        # rather than passing whenever uninitialised memory looks finite.
+        self._host_output = np.full(out_shape, np.nan, dtype=np.float32)
         self._device_input = cuda_call(cudart, cudart.cudaMalloc(host_input.nbytes))
         self._device_output = cuda_call(cudart, cudart.cudaMalloc(self._host_output.nbytes))
         cuda_call(

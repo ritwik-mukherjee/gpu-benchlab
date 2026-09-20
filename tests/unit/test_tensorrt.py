@@ -14,6 +14,7 @@ development machine and of CI.
 
 from __future__ import annotations
 
+import ctypes
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -222,6 +223,7 @@ class FakeCudart:
         self.events: list[int] = []
         self.destroyed_events: list[int] = []
         self.device_count = 1
+        self.copies: list[tuple[Any, int]] = []
         self.synchronizations = 0
         self._next = 0x1000
         self.cudaMemcpyKind = SimpleNamespace(
@@ -263,6 +265,12 @@ class FakeCudart:
         return (0,)
 
     def cudaMemcpy(self, dst: Any, src: Any, size: int, kind: Any) -> tuple[int]:  # noqa: N802
+        if kind == "D2H":
+            # A real copy writes bytes into the destination; zeros stand in for logits.
+            # Without this the backend would read its own NaN pre-fill and fail, which
+            # is exactly the behaviour test_a_missing_device_copy_is_caught relies on.
+            ctypes.memset(int(dst), 0, size)
+        self.copies.append((kind, size))
         return (0,)
 
     def cudaStreamCreate(self) -> tuple[int, int]:  # noqa: N802
@@ -750,3 +758,17 @@ class TestBackendLifecycle:
         result = run_backend(cfg("cuda:3", batch=1), environment)
         assert result.status is BenchmarkStatus.UNAVAILABLE
         assert "only 1 CUDA device" in result.errors[0].message
+
+    def test_a_missing_device_copy_is_caught_by_the_sanity_pass(
+        self, fake: FakeTrt, staged_engine: Any, environment, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regression: the output buffer is NaN-filled, so a copy that never happens fails.
+
+        With np.empty it passed or failed depending on what the uninitialised memory
+        happened to contain -- it passed on one machine and failed on another.
+        """
+        monkeypatch.setattr(fake.cudart, "cudaMemcpy", lambda *a, **k: (0,))
+        result = run_backend(cfg(batch=1), environment)
+        assert result.status is BenchmarkStatus.FAILED
+        assert result.errors[0].phase == "prepare"
+        assert "non-finite" in result.errors[0].message
