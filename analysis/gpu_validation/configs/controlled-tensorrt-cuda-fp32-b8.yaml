@@ -1,0 +1,23 @@
+# Phase 6 §10 controlled benchmark. Identical methodology to the Phase 5B configs:
+# IEEE FP32, device-resident I/O, 100 warmup + 1000 measured, 5 repeats, alternating
+# backend order, 100 ms telemetry. The only difference is the runtime under test.
+#
+# One engine serves both batch cells (profile min 1 / opt 8 / max 8). TensorRT optimises
+# tactics for opt_batch, which can disadvantage batch 1; the profile is recorded on
+# every result and must be stated wherever the batch-1 number appears.
+name: p6-controlled-tensorrt-cuda-fp32-b8
+backend: tensorrt
+device: cuda:0
+precision: fp32
+batch_size: 8
+model:
+  name: resnet50
+  weights: IMAGENET1K_V2
+backend_options:
+  min_batch: 1
+  opt_batch: 8
+  max_batch: 8
+  allow_build: true
+benchmark:
+  warmup_iterations: 100
+  measurement_iterations: 1000
