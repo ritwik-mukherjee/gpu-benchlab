@@ -4,9 +4,12 @@
 > §9 has its first real measurement (inter-iteration harness overhead, CPU). §§7–8
 > (repeats, telemetry sampling) are specified but not implemented.
 >
-> The only real measurements so far are **CPU** runs on a laptop with no NVIDIA GPU.
-> **No GPU measurement exists.** The CUDA timing path is implemented but unverified on
-> hardware. See [limitations.md](limitations.md) §0 for the four kinds of evidence.
+> **GPU measurements exist since 2026-09-20**, from one NVIDIA L4: ResNet-50 FP32 at
+> batch 1 and 8, with the CUDA-event timer and ONNX Runtime's CUDA EP validated on that
+> hardware (`results/published/2026-09-20-phase5a-l4/`). CPU runs from Phases 3–4 remain
+> CPU-only evidence and are never comparable with them. See
+> [limitations.md](limitations.md) §0 for the four kinds of evidence and §3b for what
+> qualifies the GPU numbers.
 
 The purpose of this document is to let a sceptical reader decide whether to believe
 any number this project eventually publishes.
@@ -43,10 +46,10 @@ report them separately rather than picking a favourite.
 
 | Backend | Primary | Secondary | Notes |
 |---|---|---|---|
-| PyTorch, CUDA | `torch.cuda.Event` elapsed time on the execution stream (`cuda_event`) | synchronized host `perf_counter_ns` (`wall_clock_synchronized`) | Implemented, **unverified on hardware**. Device sync before each start event, end-event sync before reading. Event time includes any idle gaps caused by slow kernel launch. |
+| PyTorch, CUDA | `torch.cuda.Event` elapsed time on the execution stream (`cuda_event`) | synchronized host `perf_counter_ns` (`wall_clock_synchronized`) | **Validated on an NVIDIA L4 (2026-09-20):** event time scales linearly with GPU work (CV 0.019%), launch is 0.156% of execution, and the host interval contained the device interval in every trial. Device sync before each start event, end-event sync before reading. Event time includes idle gaps caused by slow kernel launch — confirmed by a 20 ms host gap appearing in the measurement. |
 | PyTorch, CPU | `perf_counter_ns`, no sync (`wall_clock`) | — | PyTorch CPU ops have completed when the call returns, so there is nothing to synchronize and the mechanism says so. |
 | ONNX Runtime, CPU EP | `perf_counter_ns` around `session.run` (`wall_clock`) | — | `run` returns after execution. Session creation is timed as the engine build, never as inference. |
-| ONNX Runtime, CUDA EP | `perf_counter_ns` around `run_with_iobinding` (`wall_clock`) | — | Implemented, **unverified on hardware**. Relies on ORT synchronizing the CUDA stream at the end of `Run`. IOBinding keeps input/output on the device so host↔device copies are not timed. The **active EP is verified and recorded** — ORT will otherwise silently substitute CPU. |
+| ONNX Runtime, CUDA EP | `perf_counter_ns` around `run_with_iobinding` (`wall_clock`) | — | **Validated on an NVIDIA L4 (2026-09-20):** adding a device-wide sync after `Run` changed the median by +0.58%, so ORT does wait for the GPU; with its sync disabled the call returned in 13.6% of the time, proving the check could detect the opposite. IOBinding keeps input/output on the device so host↔device copies are not timed. The **active EP is verified and recorded** — ORT will otherwise silently substitute CPU, and a session can report an active EP it cannot execute on. |
 | TensorRT | CUDA events on the execution stream | `perf_counter_ns` + stream sync | Engine build and engine load are measured separately and never included. |
 | TensorRT-LLM | per-token timestamps | — | TTFT and inter-token latency require timestamps inside generation, not around it. |
 

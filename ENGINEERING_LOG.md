@@ -466,3 +466,63 @@ and correctness on CUDA.
 ### Next
 
 Awaiting approval for Phase 5.
+
+---
+
+## 2026-09-20 — Phase 5A: first validation on NVIDIA hardware (NVIDIA L4)
+
+Ran the GPU validation runbook end to end on a Google Cloud `g2-standard-4` with one
+NVIDIA L4 (driver 580.159.04, CUDA driver max 13.0, torch 2.14.0+cu130,
+onnxruntime-gpu 1.30.0, Ubuntu 24.04.5, Python 3.12.3). Evidence, unedited, in
+`results/published/2026-09-20-phase5a-l4/`.
+
+### What the hardware confirmed
+
+Every pre-registered check passed: NVML against `nvidia-smi` (19 fields), the PyTorch
+CUDA path, the CUDA-event timer with its negative control, ORT's CUDA EP with proof of
+execution and of its end-of-`Run` synchronization, and correctness in both directions.
+The 20-run controlled benchmark produced the project's first GPU latency numbers.
+
+### Bugs the hardware exposed (none of which fakes could have caught)
+
+1. **`multiprocessor_count` held CUDA cores, not SMs** — NVML reported 7424 where the
+   CUDA runtime reports 58 SMs (7424 = 58 × 128). `nvmlDeviceGetNumGpuCores` is "the
+   device's core count"; NVML has no SM-count call. Renamed `cuda_core_count`;
+   environment schema 1.1 → 1.2.
+2. **The ORT CUDA EP depended on torch's import side effects.** Without torch imported
+   first, ORT built a session that reported the CUDA EP active and then failed at the
+   first Conv: `dlopen failed for libcudnn.so`. `gpu-bench` only worked because it
+   imports torch while detecting the environment. `create_session` now calls
+   `onnxruntime.preload_dlls()` and records the outcome. Proven three ways on the L4:
+   torch-first passes, ORT-alone fails, ORT-alone with preload passes.
+3. **A test encoded "ORT cannot load CUDA here."** It now skips where the EP genuinely
+   loads, decided by creating a session and asking it — never by the provider list.
+
+### Findings that change how results must be read
+
+- **The L4's 72 W cap binds.** ORT at batch 1 runs power-capped at 1665–1755 MHz while
+  PyTorch at batch 1 never reaches the cap and holds 2040 MHz. The driver flagged
+  `SwPowerCap` on essentially every busy sample in three of four cells.
+- **Warmup adequacy is backend-specific.** PyTorch's first 10 iterations sit within
+  0.6–2.0% of steady state; ORT's first 10 are 7.1–8.6% *faster*, as it starts at the
+  boost clock and is then capped down. The 10-iteration default is unsafe for ORT here.
+- **cuDNN autotuning happens in the untimed sanity pass, not during warmup** as
+  `PyTorchOptions.cudnn_benchmark`'s description claims: `prepare_inputs_ms` rises
+  363–371 → 585–595 ms with it on, buying ≈1.5–2.5% steady-state latency.
+- **TF32 is detectable by the Phase 4 tolerance** (11.8–14.7× over) — but **top-1
+  agreement stayed 100%** for TF32 and FP16 alike, so top-1 alone detects neither.
+- The GPU warmed 55 → 80 °C across the session; later repeats are slightly slower.
+
+### Deviations from the plan
+
+- The pre-registered warmup rule ("if settle k > 50, use 2k") was inapplicable: the
+  ±2% block-median statistic proved jitter-dominated and returned `None` for some runs.
+  The deviation and the decision to keep `warmup_iterations = 100` were written to
+  `NOTES.md` **before** the controlled runs. No config was edited after seeing data.
+- The input-generator mismatch between backends is still not fixed, so it qualifies the
+  comparison rather than being eliminated.
+
+### Next
+
+TensorRT is still untouched, as is the LLM path: `gpu-bench models list` has only
+ResNet-50, so no Qwen3 metric (TTFT, inter-token latency, tokens/sec) can exist yet.

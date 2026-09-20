@@ -74,8 +74,8 @@ Timing and validity methodology: [docs/methodology.md](docs/methodology.md).
 | Backend | Status | Notes |
 |---|---|---|
 | Simulated (`fake`) | Implemented | **Produces no measurements.** Seeded random latency model for testing the framework on a GPU-less machine. |
-| PyTorch | Implemented (Phase 3) | CPU: executed on real hardware. CUDA: implemented, **unverified on NVIDIA hardware**. CUDA-event timing, explicit precision, IEEE FP32 enforced. |
-| ONNX Runtime | Implemented (Phase 4) | CPU EP: executed on real hardware, outputs verified against PyTorch. CUDA EP: implemented, **unverified on NVIDIA hardware**. Active EP verified — no silent CPU fallback. |
+| PyTorch | Implemented (Phase 3) | CPU and **CUDA both executed on real hardware** (NVIDIA L4, 2026-09-20). CUDA-event timing validated, explicit precision, IEEE FP32 enforced. |
+| ONNX Runtime | Implemented (Phase 4) | CPU EP and **CUDA EP both executed on real hardware** (NVIDIA L4, 2026-09-20): 122/122 nodes on the CUDA EP, outputs verified against PyTorch. Active EP verified — no silent CPU fallback. |
 | TensorRT | Planned — Phase 5 | Engine build time measured separately |
 | TensorRT-LLM | Planned — Phase 10 | TTFT, inter-token latency, tokens/sec |
 

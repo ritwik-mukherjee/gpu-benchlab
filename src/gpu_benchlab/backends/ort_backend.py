@@ -526,7 +526,12 @@ class OnnxRuntimeBackend(Backend):
         # the end of Run (the default) -- unverified on NVIDIA hardware.
         self._settings["timing_note"] = (
             "host wall clock around session.run; ORT returns after execution completes"
-            + ("" if self._device_kind is DeviceKind.CPU else " (CUDA EP sync unverified)")
+            + (
+                ""
+                if self._device_kind is DeviceKind.CPU
+                else " (CUDA EP: the end-of-Run stream synchronization was verified on an "
+                "NVIDIA L4, 2026-09-20 -- see docs/limitations.md)"
+            )
         )
         return WallClockTimer()
 

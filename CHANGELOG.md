@@ -6,7 +6,28 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
-### Added — Phase 5A preparation: GPU validation runbook (not yet executed)
+### Added — Phase 5A: first validation on NVIDIA hardware (NVIDIA L4)
+
+- **The first GPU measurements in this repository**, all from one `g2-standard-4`
+  instance with an NVIDIA L4 (driver 580.159.04, CUDA 13.0, torch 2.14.0+cu130,
+  onnxruntime-gpu 1.30.0). Evidence: `results/published/2026-09-20-phase5a-l4/`.
+- **`CudaEventTimer` validated against real asynchronous GPU work:** event time scales
+  2.0006×/4.0001× with the workload (CV 0.019%), kernel launch is 0.156% of execution,
+  and the synchronized host interval contains the device interval in every trial. A
+  deliberately unsynchronized host timer read 0.0161 ms where the truth was 19.68 ms.
+- **ONNX Runtime CUDA EP proven to execute on the GPU:** 122/122 nodes on the CUDA EP,
+  device-resident IOBinding, loaded CUDA libraries confirmed from `/proc/self/maps`, and
+  its end-of-`Run` synchronization measured (+0.58%, against a control at 13.6%).
+- **GPU correctness:** PyTorch CPU vs CUDA and PyTorch CUDA vs ORT CUDA both 9/9 under
+  the unchanged Phase 4 tolerance; the FP16 control still rejected. **TF32 measured for
+  the first time:** 11.8–14.7× the tolerance, while top-1 agreement stayed 100%.
+- **First controlled GPU benchmark:** ResNet-50 FP32, batch 1 and 8, 5 alternating
+  repeats per cell, host-side timing for both backends, with 100 ms NVML telemetry.
+  Run-to-run spread 1.66–4.90%; the backends' ranges are disjoint in both cells, and the
+  ordering reverses between batch 1 and batch 8. Qualified by a binding 72 W power cap
+  in three of four cells and by session-level warming (55 → 80 °C).
+
+### Added — Phase 5A preparation: GPU validation runbook
 
 - `docs/runbooks/gpu-validation.md`: the procedure for validating NVML, the PyTorch CUDA
   path, `CudaEventTimer`, warmup, CPU-vs-CUDA and PyTorch-vs-ORT correctness, the ORT
