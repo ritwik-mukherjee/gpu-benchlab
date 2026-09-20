@@ -48,6 +48,7 @@ The development machine (Intel Core i7-8565U, Intel UHD 620 only) has **no NVIDI
 | **ONNX Runtime CPU EP benchmark path** | Real ResNet-50 runs; active EP and per-node placement (58/58 on CPU EP) measured and recorded |
 | **No silent CUDA→CPU fallback in ONNX Runtime** | Against the **real onnxruntime-gpu 1.30** on this machine (CUDA libraries absent), where ORT itself silently built a CPU session: the backend returned `unavailable` in phase `build`, 0 samples |
 | CLI on a Windows cp1252 console | Regression tests for non-cp1252 characters and for Rich markup swallowing `[extra]` names |
+| **NVML success path on a real GPU** | Executed on an NVIDIA L4 (2026-09-20): detection OK, and 19 fields compared with `nvidia-smi` taken either side of the reading. All static fields matched exactly (name, UUID, PCI bus ID, serial, capability 8.9, total memory, 72 W limit, max clocks, persistence, compute mode); dynamic fields fell inside the bracket. Two findings, both now documented: `nvmlDeviceGetNumGpuCores` returns CUDA cores (7424), not SMs (58); and NVML's `used` memory includes driver-reserved memory (493,748,224 B where `nvidia-smi` shows 0 MiB) |
 
 ## 2. What has NOT been executed on real NVIDIA hardware (category C)
 
@@ -57,7 +58,7 @@ success criteria for validating each item are in
 
 | Item | How it was tested | What is unknown |
 |---|---|---|
-| NVML success path (`DetectionStatus.OK`) and GPU field extraction | Injected fake NVML module | Real call signatures, bytes-vs-str returns, `nvmlDeviceGetNumGpuCores` availability |
+| ~~NVML success path and GPU field extraction~~ | **Validated on an L4 — moved to §1** | — |
 | Multi-GPU enumeration | Fake | Everything real |
 | PyTorch CUDA validation (build / availability / index / capability → precision) | torch's CUDA queries patched | Behaviour against a real driver; NVML-vs-CUDA device ordering |
 | **`CudaEventTimer`** | Fake event/stream API: call order, primary = event time, host time secondary | **Whether event placement is correct for real asynchronous CUDA work.** Whether the captured stream is the one kernels actually run on. Event resolution and overhead on real hardware. |
@@ -147,6 +148,9 @@ path. Reduced-precision (FP16/INT8) ONNX artifacts are out of Phase 4 scope. See
   over-fitting to one machine.
 - Whether `ddof=1` is the right default at thousands of iterations.
 - Whether percentile confidence thresholds should scale with observed variance.
-- Whether `nvmlDeviceGetNumGpuCores` or the CUDA runtime should supply SM count.
+- ~~Whether `nvmlDeviceGetNumGpuCores` or the CUDA runtime should supply SM count.~~
+  **Answered on an L4 (2026-09-20):** NVML returns CUDA cores and has no SM-count
+  call, so the field is now `cuda_core_count` and SM count must come from the CUDA
+  runtime (environment schema 1.2).
 - How to handle GPUs shared with a desktop compositor.
 - Do transformers and TensorRT-LLM both deduplicate Qwen3's separately stored `lm_head`?

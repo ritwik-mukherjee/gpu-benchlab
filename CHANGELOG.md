@@ -18,6 +18,11 @@ All notable changes to this project are documented here. Format follows
 
 ### Fixed
 
+- **`GPUInfo.multiprocessor_count` held CUDA cores, not SMs** (environment schema
+  1.1 → **1.2**, field renamed to `cuda_core_count`). Found on an NVIDIA L4, where NVML
+  reported 7424 against the CUDA runtime's 58 SMs (7424 = 58 × 128).
+  `nvmlDeviceGetNumGpuCores` documents itself as "the device's core count"; NVML exposes
+  no SM count. Older results still load, as the field is simply absent from them.
 - `docs/environment.md` suggested the `cu128` PyTorch index, which stops at torch 2.11.0;
   the documented commands now pin 2.14.0 on indexes that carry it.
 

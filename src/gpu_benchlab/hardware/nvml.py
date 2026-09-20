@@ -209,8 +209,9 @@ class NVMLProbe:
             compute_capability=cc_str,
             compute_capability_major=cc_major,
             compute_capability_minor=cc_minor,
-            multiprocessor_count=_safe(
-                lambda: nvml.nvmlDeviceGetNumGpuCores(handle)  # SM count where exposed
+            cuda_core_count=_safe(
+                # CUDA cores, not SMs: measured 7424 on an L4 whose SM count is 58.
+                lambda: nvml.nvmlDeviceGetNumGpuCores(handle)
             ),
             memory_total_bytes=getattr(mem, "total", None) if mem is not None else None,
             memory_free_bytes=getattr(mem, "free", None) if mem is not None else None,

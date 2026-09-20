@@ -152,7 +152,7 @@ class TestPowerSource:
 
         from gpu_benchlab.hardware import EnvironmentReport
 
-        assert ENVIRONMENT_SCHEMA_VERSION == "1.1"
+        assert ENVIRONMENT_SCHEMA_VERSION == "1.2"
         fixture = Path(__file__).parent.parent / "fixtures" / "result_schema_1_0.json"
         env = json.loads(fixture.read_text(encoding="utf-8"))["environment"]
         assert env["schema_version"] == "1.0"

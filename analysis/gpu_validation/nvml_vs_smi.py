@@ -10,8 +10,9 @@ Pre-registered rules:
                     (investigate and explain; never "fixed" by editing values)
   availability      tool None where smi has a value                  FAIL
                     tool 0 where smi says N/A (unavailable -> zero)  FAIL
-  SM count          GPUInfo.multiprocessor_count vs torch's multi_processor_count;
-                    a mismatch means the field does not hold the SM count  FAIL
+  core count        GPUInfo.cuda_core_count vs the CUDA runtime's SM count: recorded
+                    as INFO with the ratio. NVML reports CUDA cores and exposes no SM
+                    count, so these are expected to differ (L4: 7424 = 58 x 128).
 
 Usage: python analysis/gpu_validation/nvml_vs_smi.py <out_dir>
 """
@@ -176,14 +177,19 @@ def main() -> None:
                 props = torch.cuda.get_device_properties(i)
                 uuid = str(getattr(props, "uuid", ""))
                 match = next((g for g in env.gpus if g.uuid and uuid and uuid in g.uuid), None)
-                checks.expect(
-                    f"torch{i}.sm_count",
-                    match is not None and match.multiprocessor_count == props.multi_processor_count,
-                    "GPUInfo.multiprocessor_count equals torch's SM count (matched by UUID)",
+                cores = match.cuda_core_count if match else None
+                sms = props.multi_processor_count
+                checks.add(
+                    f"torch{i}.core_count",
+                    INFO if match else FAIL,
+                    "NVML CUDA cores vs the CUDA runtime's SM count (matched by UUID). "
+                    "NVML exposes no SM count, so these must differ; the ratio is "
+                    "cores per SM.",
                     torch_uuid=uuid,
-                    torch_sm_count=props.multi_processor_count,
+                    torch_sm_count=sms,
                     nvml_gpu=match.index if match else None,
-                    nvml_multiprocessor_count=match.multiprocessor_count if match else None,
+                    nvml_cuda_core_count=cores,
+                    cores_per_sm=(cores / sms) if cores and sms else None,
                 )
         else:
             checks.add("sm_count", INCONCLUSIVE, "torch has no CUDA device; SM count unchecked")

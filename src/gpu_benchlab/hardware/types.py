@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from gpu_benchlab.hardware.capability import Precision, PrecisionSupport
 
 # 1.1: adds host power_plugged / battery_percent (additive; 1.0 reports still load).
-ENVIRONMENT_SCHEMA_VERSION = "1.1"
+ENVIRONMENT_SCHEMA_VERSION = "1.2"
 
 __all__ = [
     "ENVIRONMENT_SCHEMA_VERSION",
@@ -99,7 +99,15 @@ class GPUInfo(BaseModel):
     )
     compute_capability_major: int | None = None
     compute_capability_minor: int | None = None
-    multiprocessor_count: int | None = None
+    cuda_core_count: int | None = Field(
+        default=None,
+        description=(
+            "CUDA cores, from nvmlDeviceGetNumGpuCores ('the device's core count'). "
+            "This is NOT the SM count: on an NVIDIA L4 NVML reported 7424 while the "
+            "GPU has 58 SMs (7424 = 58 x 128). NVML exposes no SM count; take it from "
+            "the CUDA runtime instead."
+        ),
+    )
 
     memory_total_bytes: int | None = None
     memory_free_bytes: int | None = None

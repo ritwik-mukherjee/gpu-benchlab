@@ -153,6 +153,8 @@ Already-verified examples of things memory gets wrong (all verified 2026-09-18):
 | `torch.onnx.export` output is one self-contained file | **Not by default:** weights went to a separate `.onnx.data` file even for ~100 MB. Use `external_data=False` (< 2 GB) so the artifact hash covers the weights. Its progress output also crashes a Windows cp1252 console; pass `verbose=False`. |
 | The `onnx` library's max opset is safe to use | **No.** onnx 1.23 supports opset 28; ORT 1.30 rejected it. Pin the opset. |
 | `torch.onnx.export` uses the TorchScript exporter | Since PyTorch 2.9 it defaults to `dynamo=True`; use `dynamic_shapes` — `dynamic_axes` is deprecated. Record exporter mode and opset. |
+| `nvmlDeviceGetNumGpuCores` returns the SM count | **No — CUDA cores.** Measured on an NVIDIA L4 (2026-09-20): NVML 7424, CUDA runtime 58 SMs (7424 = 58 × 128). NVML exposes no SM count; take it from the CUDA runtime. |
+| NVML `memory.used` matches `nvidia-smi` | **Not at idle.** On the same L4, NVML reported 493,748,224 B used while `nvidia-smi` reported 0 MiB (totals matched exactly). NVML v1 `used` includes driver-reserved memory. |
 | `tie_word_embeddings: true` means the checkpoint stores one matrix | Qwen3 checkpoints store `lm_head.weight` separately anyway (verified from the safetensors index). On-disk size overstates tied in-memory size; runtimes may differ in whether they deduplicate. |
 
 Add to this table whenever you catch another one.
