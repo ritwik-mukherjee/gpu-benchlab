@@ -1,0 +1,267 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "af246aa91723",
+  "group_id": null,
+  "repeat_index": 0,
+  "timestamp_utc": "2026-09-20T13:04:43.315938+00:00",
+  "status": "unavailable",
+  "is_simulated": false,
+  "configuration": {
+    "name": "phase5a-ort-cuda-hidden",
+    "description": null,
+    "model": {
+      "name": "resnet50",
+      "source": null,
+      "revision": null,
+      "format": null,
+      "input_shape": null,
+      "sequence_length": null,
+      "weights": "IMAGENET1K_V2",
+      "seed": 0
+    },
+    "backend": "onnxruntime",
+    "precision": "fp32",
+    "batch_size": 1,
+    "device": "cuda:0",
+    "backend_options": {
+      "allow_export": false
+    },
+    "benchmark": {
+      "warmup_iterations": 10,
+      "measurement_iterations": 100,
+      "repeats": 1
+    }
+  },
+  "backend": {
+    "name": "onnxruntime",
+    "version": "1.30.0",
+    "execution_provider": "CUDAExecutionProvider",
+    "device": "cuda:0",
+    "device_kind": "cuda",
+    "settings": {
+      "device": "cuda:0",
+      "requested_provider": "CUDAExecutionProvider",
+      "requested_precision": "fp32",
+      "graph_optimization_level": "all",
+      "intra_op_num_threads": null,
+      "inter_op_num_threads": null,
+      "input_generator": "numpy.random.default_rng(seed).standard_normal(shape, dtype=float32)",
+      "input_seed": 0,
+      "onnxruntime_version": "1.30.0",
+      "available_providers": "TensorrtExecutionProvider,CUDAExecutionProvider,CPUExecutionProvider",
+      "cuda_libraries_preloaded": "ok",
+      "provider_option.device_id": "0",
+      "provider_option.use_tf32": "0",
+      "provider_option.cudnn_conv_algo_search": "EXHAUSTIVE",
+      "artifact_exported_this_run": false,
+      "artifact_filename": "resnet50-IMAGENET1K_V2-opset20-dynbatch.onnx",
+      "artifact_sha256": "7084761c8e9e83c454dcc97775dce4bcb1f046d400be8e386ba52ce4a0813923",
+      "opset": 20,
+      "dynamic_batch": true,
+      "exporter_torch_version": "2.14.0+cu130",
+      "exporter_onnx_version": "1.23.0",
+      "input_name": "input",
+      "input_dtype": "float32"
+    },
+    "is_simulated": false,
+    "detail": "ONNX Runtime, CUDA execution provider (implemented, unverified on NVIDIA hardware)."
+  },
+  "environment": {
+    "schema_version": "1.2",
+    "timestamp_utc": "2026-09-20T13:04:40.105373+00:00",
+    "benchlab_version": "0.1.0",
+    "host": {
+      "hostname": "gpu-benchlab-l4.asia-south1-b.c.gpu-benchlab.internal",
+      "os_name": "Linux",
+      "os_version": "#11~24.04.1-Ubuntu SMP PREEMPT Tue Aug 11 20:14:48 UTC 2026",
+      "os_release": "7.0.0-1011-gcp",
+      "architecture": "x86_64",
+      "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+      "cpu_physical_cores": 2,
+      "cpu_logical_cores": 4,
+      "total_memory_bytes": 16762155008,
+      "python_version": "3.12.3",
+      "python_implementation": "CPython",
+      "python_executable": "/home/Claude2/gpu-benchlab/.venv/bin/python",
+      "power_plugged": null,
+      "battery_percent": null
+    },
+    "nvml": {
+      "driver_version": "580.159.04",
+      "nvml_version": "13.580.159.04",
+      "cuda_driver_version": "13.0"
+    },
+    "gpus": [
+      {
+        "index": 0,
+        "name": "NVIDIA L4",
+        "uuid": "GPU-87526505-0c69-6e59-3319-a76a2381b420",
+        "pci_bus_id": "00000000:00:03.0",
+        "serial": "1322923033737",
+        "architecture": "Ada Lovelace",
+        "compute_capability": "8.9",
+        "compute_capability_major": 8,
+        "compute_capability_minor": 9,
+        "cuda_core_count": 7424,
+        "memory_total_bytes": 24152899584,
+        "memory_free_bytes": 22591700992,
+        "memory_used_bytes": 1561198592,
+        "utilization_gpu_percent": 0,
+        "utilization_memory_percent": 0,
+        "temperature_celsius": 57,
+        "power_usage_watts": 53.608,
+        "power_limit_watts": 72.0,
+        "sm_clock_mhz": 2040,
+        "max_sm_clock_mhz": 2040,
+        "memory_clock_mhz": 6251,
+        "max_memory_clock_mhz": 6251,
+        "persistence_mode": false,
+        "compute_mode": "default",
+        "precision_support": [
+          {
+            "precision": "fp32",
+            "supported": true,
+            "tensor_core": false,
+            "note": "Baseline format; supported on every CUDA GPU."
+          },
+          {
+            "precision": "tf32",
+            "supported": true,
+            "tensor_core": true,
+            "note": "TF32 tensor-core path for FP32 math (SM 8.0+)."
+          },
+          {
+            "precision": "fp16",
+            "supported": true,
+            "tensor_core": true,
+            "note": "FP16 with tensor-core acceleration (SM 7.0+)."
+          },
+          {
+            "precision": "bf16",
+            "supported": true,
+            "tensor_core": true,
+            "note": "BF16 tensor cores (SM 8.0+)."
+          },
+          {
+            "precision": "int8",
+            "supported": true,
+            "tensor_core": true,
+            "note": "INT8 tensor cores (SM 7.5+)."
+          },
+          {
+            "precision": "fp8",
+            "supported": true,
+            "tensor_core": true,
+            "note": "FP8 (E4M3/E5M2) tensor cores."
+          },
+          {
+            "precision": "int4",
+            "supported": true,
+            "tensor_core": true,
+            "note": "INT4 tensor-core path (SM 7.5-9.x); deprecated on newer parts."
+          },
+          {
+            "precision": "fp4",
+            "supported": false,
+            "tensor_core": false,
+            "note": "Requires Blackwell (SM 10.0+)."
+          }
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "torch",
+        "available": true,
+        "version": "2.14.0+cu130",
+        "cuda_available": false,
+        "cuda_version": "13.0",
+        "device_count": 0,
+        "providers": null,
+        "detail": "Built against CUDA 13.0 but no CUDA device is available (driver missing, no NVIDIA GPU, or device hidden by CUDA_VISIBLE_DEVICES)."
+      },
+      {
+        "name": "onnxruntime",
+        "available": true,
+        "version": "1.30.0",
+        "cuda_available": true,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": [
+          "TensorrtExecutionProvider",
+          "CUDAExecutionProvider",
+          "CPUExecutionProvider"
+        ],
+        "detail": null
+      },
+      {
+        "name": "tensorrt",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'tensorrt')."
+      },
+      {
+        "name": "tensorrt_llm",
+        "available": false,
+        "version": null,
+        "cuda_available": null,
+        "cuda_version": null,
+        "device_count": null,
+        "providers": null,
+        "detail": "Not installed (ModuleNotFoundError: No module named 'tensorrt_llm')."
+      }
+    ],
+    "detection_status": "ok",
+    "detection_error": null
+  },
+  "timing_mechanism": null,
+  "measures_steady_state": true,
+  "device_kind": "cuda",
+  "model_info": {
+    "name": "resnet50",
+    "architecture": "ResNet",
+    "source": "torchvision.models.resnet50 (ResNet v1.5)",
+    "weights": "IMAGENET1K_V2",
+    "weights_url": "https://download.pytorch.org/models/resnet50-11ad3fa6.pth",
+    "weights_sha256": "11ad3fa62ca79e40addfd354a8ec4b7c75143b3038b8d2a807fbc68deab379ca",
+    "random_init_seed": null,
+    "parameter_count": 25557032,
+    "expected_parameter_count": 25557032
+  },
+  "secondary_timing_mechanism": null,
+  "secondary_latency": null,
+  "phases": {
+    "model_load_ms": null,
+    "engine_build_ms": null,
+    "prepare_inputs_ms": null,
+    "warmup_total_ms": null,
+    "measurement_total_ms": null
+  },
+  "latency": null,
+  "throughput": [],
+  "raw_samples": {
+    "latency_ms": [],
+    "warmup_latency_ms": [],
+    "secondary_latency_ms": [],
+    "secondary_warmup_latency_ms": []
+  },
+  "provenance": {
+    "benchlab_version": "0.1.0",
+    "git_commit": "21aa5c7e1a775b89c1a98f4eef7e7b583c3f2101",
+    "git_dirty": false
+  },
+  "errors": [
+    {
+      "type": "UnavailableError",
+      "message": "Requested CUDAExecutionProvider, but the created session is using ['CPUExecutionProvider']: the EP failed to load and ONNX Runtime substituted another one. Not falling back.",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/core/engine.py\", line 171, in run\n    backend.build()\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/ort_backend.py\", line 435, in build\n    self._session = create_session(\n                    ^^^^^^^^^^^^^^^\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/ort_backend.py\", line 193, in create_session\n    raise UnavailableError(\ngpu_benchlab.core.errors.UnavailableError: Requested CUDAExecutionProvider, but the created session is using ['CPUExecutionProvider']: the EP failed to load and ONNX Runtime substituted another one. Not falling back.\n",
+      "phase": "build",
+      "timestamp_utc": "2026-09-20T13:04:43.303805+00:00"
+    }
+  ],
+  "notes": []
+}

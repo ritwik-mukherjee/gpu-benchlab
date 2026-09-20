@@ -1,0 +1,3 @@
+$ systemd-detect-virt
+google
+[exit 0]

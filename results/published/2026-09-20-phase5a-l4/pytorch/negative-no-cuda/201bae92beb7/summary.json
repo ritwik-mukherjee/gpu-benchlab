@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "201bae92beb7",
+  "status": "unavailable",
+  "is_simulated": false,
+  "backend": "pytorch",
+  "device_kind": "cuda",
+  "device": "cuda:0",
+  "precision": "fp32",
+  "batch_size": 1,
+  "timing_mechanism": null,
+  "measures_steady_state": true,
+  "phases": {
+    "model_load_ms": null,
+    "engine_build_ms": null,
+    "prepare_inputs_ms": null,
+    "warmup_total_ms": null,
+    "measurement_total_ms": null
+  },
+  "latency_ms": null,
+  "secondary_timing_mechanism": null,
+  "secondary_latency_ms": null,
+  "throughput": [],
+  "errors": [
+    {
+      "type": "UnavailableError",
+      "message": "Requested cuda:0, but PyTorch reports no usable CUDA device. NVIDIA detection reports 'ok'. Not falling back to CPU.",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/core/engine.py\", line 158, in run\n    backend.validate(config, self.environment)\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/pytorch.py\", line 256, in validate\n    self._validate_cuda(environment)\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/pytorch.py\", line 287, in _validate_cuda\n    raise UnavailableError(\ngpu_benchlab.core.errors.UnavailableError: Requested cuda:0, but PyTorch reports no usable CUDA device. NVIDIA detection reports 'ok'. Not falling back to CPU.\n",
+      "phase": "validate",
+      "timestamp_utc": "2026-09-20T12:53:17.938033+00:00"
+    }
+  ],
+  "notes": []
+}

@@ -1,0 +1,39 @@
+Running p5a-controlled-onnxruntime-cuda-fp32-b8 (backend=onnxruntime, 
+device=cuda:0, precision=fp32, batch=8, warmup=100, iters=1000)
+
+[0;93m2026-09-20 13:10:10.366376156 [W:onnxruntime:Default, onnxruntime_pybind_state.cc:855 operator()] No registered plugin EP device found for 'CUDAExecutionProvider' with device_id=0[m
+[0;93m2026-09-20 13:10:10.680491271 [W:onnxruntime:Default, onnxruntime_pybind_state.cc:855 operator()] No registered plugin EP device found for 'CUDAExecutionProvider' with device_id=0[m
+Status: ok
+Device: cuda (cuda:0)
+Timing mechanism: wall_clock
+Model: resnet50 (ResNet, 25,557,032 params, weights IMAGENET1K_V2, sha256 
+11ad3fa62ca79e40...)
+
+Phases                           
+Phase                    Duration
+Model load             335.223 ms
+Engine build           294.781 ms
+Prepare inputs         741.391 ms
+Warmup (total)        1242.412 ms
+Measurement (total)  12655.875 ms
+
+Latency               
+Statistic      Value  
+samples         1000  
+min        12.323 ms  
+mean       12.651 ms  
+median     12.648 ms  
+p50        12.648 ms  
+p90        12.817 ms  
+p95        12.883 ms  
+p99        12.952 ms  
+max        13.041 ms  
+std dev     0.128 ms  
+
+Throughput                                                                    
+ Value  Unit         Derived from                                             
+632.35  samples/sec  batch_size / mean_latency_s                              
+632.12  samples/sec  measurement_iterations * batch_size / measurement_total_s
+
+
+Result written to results/phase5a-raw/runs/ctl-onnxruntime-b8-r4/d8e7220db255

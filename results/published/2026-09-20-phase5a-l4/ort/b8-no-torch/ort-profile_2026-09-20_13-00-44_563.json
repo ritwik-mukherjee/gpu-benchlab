@@ -1,0 +1,7 @@
+[
+{"cat" : "Session","pid" :37004,"tid" :37004,"dur" :35622,"ts" :4,"ph" : "X","name" :"model_loading_uri","args" : {}},
+{"cat" : "Session","pid" :37004,"tid" :37004,"dur" :77832,"ts" :3644765,"ph" : "X","name" :"session_initialization","args" : {}},
+{"cat" : "Node","pid" :37004,"tid" :37004,"dur" :1209,"ts" :3749557,"ph" : "X","name" :"node_Conv_754_kernel_time","args" : {"thread_scheduling_stats" : {"main_thread": {"thread_pool_name": "session-1-intra-op", "thread_id": "138397371531392", "block_size": [], "core": -1, "Distribution": 0, "DistributionEnqueue": 0, "Run": 0, "Wait": 0, "WaitRevoke": 0}, "sub_threads": {"138397078599360": {"num_run": 0, "core": -1}}},"mem_in_use_delta" : "25690112","node_index" : "0","mem_arena_held" : "269484032","provider" : "CUDAExecutionProvider","mem_arena_held_delta" : "134217728","op_name" : "Conv","activation_size" : "4816896","mem_bytes_in_use" : "139000064","output_size" : "25690112","parameter_size" : "37888","mem_in_use_peak" : "139000064","output_type_shape" : [{"float":[8,64,112,112]}],"input_type_shape" : [{"float":[8,3,224,224]},{"float":[64,3,7,7]},{"float":[64]}],"mem_requested_in_use_delta" : "25690112","mem_bytes_requested_in_use" : "127812000"}},
+{"cat" : "Session","pid" :37004,"tid" :37004,"dur" :1313,"ts" :3749551,"ph" : "X","name" :"SequentialExecutor::Execute","args" : {}},
+{"cat" : "Session","pid" :37004,"tid" :37004,"dur" :1445,"ts" :3749510,"ph" : "X","name" :"model_run","args" : {}}
+]

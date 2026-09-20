@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "201bae92beb7",
+  "is_simulated": false,
+  "device_kind": "cuda",
+  "timing_mechanism": null,
+  "secondary_timing_mechanism": null,
+  "units": "milliseconds",
+  "latency_ms": [],
+  "warmup_latency_ms": [],
+  "secondary_latency_ms": [],
+  "secondary_warmup_latency_ms": []
+}

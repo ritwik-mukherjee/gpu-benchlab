@@ -1,0 +1,1 @@
+{"name": "phase5a-pytorch-cuda-check", "backend": "pytorch", "device": "cuda:0", "precision": "fp32", "batch_size": 1, "model": {"name": "resnet50", "weights": "IMAGENET1K_V2"}, "backend_options": {"cudnn_benchmark": true, "channels_last": false}, "benchmark": {"warmup_iterations": 10, "measurement_iterations": 100}}

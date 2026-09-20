@@ -1,0 +1,3 @@
+$ nvcc --version
+analysis/gpu_validation/collect_env.sh: line 14: nvcc: command not found
+[exit 127]

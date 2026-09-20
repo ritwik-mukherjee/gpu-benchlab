@@ -1,0 +1,12 @@
+Exported resnet50-IMAGENET1K_V2-opset20-dynbatch.onnx (102,350,898 bytes)
+  sha256   7084761c8e9e83c454dcc97775dce4bcb1f046d400be8e386ba52ce4a0813923
+  weights  IMAGENET1K_V2 
+(11ad3fa62ca79e40addfd354a8ec4b7c75143b3038b8d2a807fbc68deab379ca)
+  opset    20   input ['batch', 3, 224, 224]
+  location /home/Claude2/.cache/gpu-benchlab/onnx
+  PASS sha256 matches manifest
+  PASS self-contained (no external data)
+  PASS onnx.checker full_check
+  PASS opset 20
+  PASS input input float32 ['batch', 3, 224, 224]
+  PASS output logits float32 ['batch', 1000]

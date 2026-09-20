@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "af246aa91723",
+  "status": "unavailable",
+  "is_simulated": false,
+  "backend": "onnxruntime",
+  "device_kind": "cuda",
+  "device": "cuda:0",
+  "precision": "fp32",
+  "batch_size": 1,
+  "timing_mechanism": null,
+  "measures_steady_state": true,
+  "phases": {
+    "model_load_ms": null,
+    "engine_build_ms": null,
+    "prepare_inputs_ms": null,
+    "warmup_total_ms": null,
+    "measurement_total_ms": null
+  },
+  "latency_ms": null,
+  "secondary_timing_mechanism": null,
+  "secondary_latency_ms": null,
+  "throughput": [],
+  "errors": [
+    {
+      "type": "UnavailableError",
+      "message": "Requested CUDAExecutionProvider, but the created session is using ['CPUExecutionProvider']: the EP failed to load and ONNX Runtime substituted another one. Not falling back.",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/core/engine.py\", line 171, in run\n    backend.build()\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/ort_backend.py\", line 435, in build\n    self._session = create_session(\n                    ^^^^^^^^^^^^^^^\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/ort_backend.py\", line 193, in create_session\n    raise UnavailableError(\ngpu_benchlab.core.errors.UnavailableError: Requested CUDAExecutionProvider, but the created session is using ['CPUExecutionProvider']: the EP failed to load and ONNX Runtime substituted another one. Not falling back.\n",
+      "phase": "build",
+      "timestamp_utc": "2026-09-20T13:04:43.303805+00:00"
+    }
+  ],
+  "notes": []
+}

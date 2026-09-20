@@ -1,0 +1,91 @@
+{
+  "script": "ort_cuda_check",
+  "argv": [
+    "analysis/gpu_validation/ort_cuda_check.py",
+    "results/phase5a-raw/ort",
+    "--batch",
+    "8"
+  ],
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "platform": "Linux-7.0.0-1011-gcp-x86_64-with-glibc2.39",
+  "cuda_visible_devices": null,
+  "checks": [
+    {
+      "id": "artifact",
+      "status": "INFO",
+      "description": "artifact",
+      "evidence": {
+        "path": "/home/Claude2/.cache/gpu-benchlab/onnx/resnet50-IMAGENET1K_V2-opset20-dynbatch.onnx",
+        "sha256": "7084761c8e9e83c454dcc97775dce4bcb1f046d400be8e386ba52ce4a0813923",
+        "weights_sha256": "11ad3fa62ca79e40addfd354a8ec4b7c75143b3038b8d2a807fbc68deab379ca",
+        "torch_in_process": false
+      }
+    },
+    {
+      "id": "O1",
+      "status": "PASS",
+      "description": "CUDA EP is the session's first active provider",
+      "evidence": {
+        "active": [
+          "CUDAExecutionProvider",
+          "CPUExecutionProvider"
+        ],
+        "available": [
+          "TensorrtExecutionProvider",
+          "CUDAExecutionProvider",
+          "CPUExecutionProvider"
+        ]
+      }
+    },
+    {
+      "id": "O2",
+      "status": "PASS",
+      "description": "effective use_tf32 is 0 (IEEE FP32)",
+      "evidence": {
+        "effective": {
+          "device_id": "0",
+          "use_tf32": "0",
+          "cudnn_conv_algo_search": "EXHAUSTIVE"
+        }
+      }
+    },
+    {
+      "id": "O3",
+      "status": "FAIL",
+      "description": "CUDA EP, cuDNN and cuBLAS libraries are loaded in this process",
+      "evidence": {
+        "libraries": {
+          "libonnxruntime_providers_cuda": [
+            "/home/Claude2/gpu-benchlab/.venv/lib/python3.12/site-packages/onnxruntime/capi/libonnxruntime_providers_cuda.so"
+          ],
+          "libcudnn": [],
+          "libcublas": [
+            "/usr/local/cuda-13.4/targets/x86_64-linux/lib/libcublas.so.13.8.0.4",
+            "/usr/local/cuda-13.4/targets/x86_64-linux/lib/libcublasLt.so.13.8.0.4"
+          ],
+          "libcudart": [
+            "/usr/local/cuda-13.4/targets/x86_64-linux/lib/libcudart.so.13.4.92"
+          ]
+        }
+      }
+    },
+    {
+      "id": "O4x",
+      "status": "FAIL",
+      "description": "the session reported the CUDA EP but could not execute (e.g. cuDNN not loadable in this process)",
+      "evidence": {
+        "error": "RuntimeError: Error in execution: Non-zero status code returned while running Conv node. Name:'node_Conv_754' Status Message: /onnxruntime_src/onnxruntime/core/providers/cuda/cuda_kernel.h:296 static cudnnContext* onnxruntime::cuda::CudaKernel::RequireCudnnHandle(cudnnHandle_t) [ONNXRuntimeError] : 9 : NOT_IMPLEMENTED : cuDNN is unavailable or disabled for CUDA Execution Provider: dlopen failed for libcudnn.so: libcudnn.so: cannot open shared object file: No such file or directory\n",
+        "libraries": {
+          "libcudnn": [],
+          "libcublas": [
+            "/usr/local/cuda-13.4/targets/x86_64-linux/lib/libcublas.so.13.8.0.4",
+            "/usr/local/cuda-13.4/targets/x86_64-linux/lib/libcublasLt.so.13.8.0.4"
+          ],
+          "libonnxruntime_providers_cuda": [
+            "/home/Claude2/gpu-benchlab/.venv/lib/python3.12/site-packages/onnxruntime/capi/libonnxruntime_providers_cuda.so"
+          ]
+        }
+      }
+    }
+  ]
+}

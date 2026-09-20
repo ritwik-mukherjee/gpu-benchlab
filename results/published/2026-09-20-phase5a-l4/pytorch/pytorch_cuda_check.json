@@ -1,0 +1,746 @@
+{
+  "script": "pytorch_cuda_check",
+  "argv": [
+    "analysis/gpu_validation/pytorch_cuda_check.py",
+    "results/phase5a-raw/pytorch"
+  ],
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "platform": "Linux-7.0.0-1011-gcp-x86_64-with-glibc2.39",
+  "cuda_visible_devices": null,
+  "checks": [
+    {
+      "id": "P1",
+      "status": "PASS",
+      "description": "torch.cuda.is_available()",
+      "evidence": {}
+    },
+    {
+      "id": "P2",
+      "status": "PASS",
+      "description": "backend's device is the NVML GPU with the same UUID",
+      "evidence": {
+        "torch_name": "NVIDIA L4",
+        "torch_uuid": "87526505-0c69-6e59-3319-a76a2381b420",
+        "nvml": {
+          "index": 0,
+          "name": "NVIDIA L4",
+          "uuid": "GPU-87526505-0c69-6e59-3319-a76a2381b420",
+          "pci_bus_id": "00000000:00:03.0",
+          "serial": "1322923033737",
+          "architecture": "Ada Lovelace",
+          "compute_capability": "8.9",
+          "compute_capability_major": 8,
+          "compute_capability_minor": 9,
+          "cuda_core_count": 7424,
+          "memory_total_bytes": 24152899584,
+          "memory_free_bytes": 23656136704,
+          "memory_used_bytes": 496762880,
+          "utilization_gpu_percent": 0,
+          "utilization_memory_percent": 0,
+          "temperature_celsius": 50,
+          "power_usage_watts": 28.815,
+          "power_limit_watts": 72.0,
+          "sm_clock_mhz": 2040,
+          "max_sm_clock_mhz": 2040,
+          "memory_clock_mhz": 6251,
+          "max_memory_clock_mhz": 6251,
+          "persistence_mode": false,
+          "compute_mode": "default",
+          "precision_support": [
+            {
+              "precision": "fp32",
+              "supported": true,
+              "tensor_core": false,
+              "note": "Baseline format; supported on every CUDA GPU."
+            },
+            {
+              "precision": "tf32",
+              "supported": true,
+              "tensor_core": true,
+              "note": "TF32 tensor-core path for FP32 math (SM 8.0+)."
+            },
+            {
+              "precision": "fp16",
+              "supported": true,
+              "tensor_core": true,
+              "note": "FP16 with tensor-core acceleration (SM 7.0+)."
+            },
+            {
+              "precision": "bf16",
+              "supported": true,
+              "tensor_core": true,
+              "note": "BF16 tensor cores (SM 8.0+)."
+            },
+            {
+              "precision": "int8",
+              "supported": true,
+              "tensor_core": true,
+              "note": "INT8 tensor cores (SM 7.5+)."
+            },
+            {
+              "precision": "fp8",
+              "supported": true,
+              "tensor_core": true,
+              "note": "FP8 (E4M3/E5M2) tensor cores."
+            },
+            {
+              "precision": "int4",
+              "supported": true,
+              "tensor_core": true,
+              "note": "INT4 tensor-core path (SM 7.5-9.x); deprecated on newer parts."
+            },
+            {
+              "precision": "fp4",
+              "supported": false,
+              "tensor_core": false,
+              "note": "Requires Blackwell (SM 10.0+)."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "P3",
+      "status": "PASS",
+      "description": "recorded compute capability matches torch and NVML",
+      "evidence": {
+        "recorded": "8.9"
+      }
+    },
+    {
+      "id": "P4",
+      "status": "PASS",
+      "description": "every parameter and buffer is on cuda:0",
+      "evidence": {
+        "devices": [
+          "cuda:0"
+        ],
+        "count": 320
+      }
+    },
+    {
+      "id": "P5",
+      "status": "PASS",
+      "description": "parameters are float32",
+      "evidence": {}
+    },
+    {
+      "id": "P6",
+      "status": "PASS",
+      "description": "input is on cuda:0",
+      "evidence": {
+        "device": "cuda:0"
+      }
+    },
+    {
+      "id": "P7",
+      "status": "PASS",
+      "description": "output is on cuda:0, shape (1, 1000), float32, finite",
+      "evidence": {
+        "device": "cuda:0",
+        "shape": [
+          1,
+          1000
+        ],
+        "dtype": "torch.float32"
+      }
+    },
+    {
+      "id": "P8",
+      "status": "PASS",
+      "description": "IEEE FP32 is applied and recorded (TF32 off)",
+      "evidence": {
+        "precision_mode": "cast",
+        "requested_precision": "fp32",
+        "tensor_core_for_precision": false,
+        "fp32_precision_api": "fp32_precision",
+        "fp32_precision.global": "none",
+        "fp32_precision.cudnn": "none",
+        "fp32_precision.cudnn.conv": "ieee",
+        "fp32_precision.cudnn.rnn": "ieee",
+        "fp32_precision.cuda.matmul": "ieee"
+      }
+    },
+    {
+      "id": "P9",
+      "status": "PASS",
+      "description": "sanity pass recorded",
+      "evidence": {}
+    },
+    {
+      "id": "P10",
+      "status": "PASS",
+      "description": "CUDA memory allocated covers the weights",
+      "evidence": {
+        "allocated": 111666688,
+        "weights": 102441032
+      }
+    },
+    {
+      "id": "P11",
+      "status": "PASS",
+      "description": "CudaEventTimer records on the current (execution) stream",
+      "evidence": {
+        "timer_stream": 0,
+        "current_stream": 0
+      }
+    },
+    {
+      "id": "P12",
+      "status": "PASS",
+      "description": "this PID is listed in nvidia-smi compute apps",
+      "evidence": {}
+    },
+    {
+      "id": "E1",
+      "status": "PASS",
+      "description": "launch returns long before the GPU finishes (asynchronous)",
+      "evidence": {
+        "launch_median_ms": 0.030698,
+        "event_median_ms": 19.679743766784668
+      }
+    },
+    {
+      "id": "E2",
+      "status": "PASS",
+      "description": "event time scales linearly with GPU work",
+      "evidence": {
+        "ratio_2x": 2.000624370916256,
+        "ratio_4x": 4.000104094126678,
+        "medians_ms": {
+          "1": 4.9198079109191895,
+          "2": 9.842687606811523,
+          "4": 19.679743766784668
+        }
+      }
+    },
+    {
+      "id": "E3",
+      "status": "PASS",
+      "description": "synchronized host interval contains the event interval",
+      "evidence": {
+        "violations": [],
+        "median_host_minus_event_ms": {
+          "1": 0.0240809191894531,
+          "2": 0.025549084594725713,
+          "4": 0.03023114886474687
+        }
+      }
+    },
+    {
+      "id": "E4",
+      "status": "PASS",
+      "description": "event time is stable (CV < 2%)",
+      "evidence": {
+        "cv": 0.00018989308796788775
+      }
+    },
+    {
+      "id": "E5",
+      "status": "PASS",
+      "description": "idle stream time between the events is counted (documented semantics: device time between events, not the sum of kernel time)",
+      "evidence": {
+        "event_ms": 25.085952758789062,
+        "work_alone_ms": 4.9198079109191895
+      }
+    },
+    {
+      "id": "E6",
+      "status": "PASS",
+      "description": "real CudaEventTimer agrees with the reference event time; secondary host >= primary",
+      "evidence": {
+        "timer_median_ms": 19.670015335083008,
+        "reference_ms": 19.679743766784668
+      }
+    },
+    {
+      "id": "E7",
+      "status": "PASS",
+      "description": "negative control: an unsynchronized host timer reads only the launch",
+      "evidence": {
+        "naive_median_ms": 0.016106000000000002,
+        "event_median_ms": 19.679743766784668
+      }
+    },
+    {
+      "id": "N1",
+      "status": "PASS",
+      "description": "CUDA hidden: result is unavailable/failed with zero samples (no CPU fallback)",
+      "evidence": {
+        "exit_code": 1,
+        "stored_status": [
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "errors": [
+          [
+            {
+              "type": "UnavailableError",
+              "message": "Requested cuda:0, but PyTorch reports no usable CUDA device. NVIDIA detection reports 'ok'. Not falling back to CPU.",
+              "traceback": "Traceback (most recent call last):\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/core/engine.py\", line 158, in run\n    backend.validate(config, self.environment)\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/pytorch.py\", line 256, in validate\n    self._validate_cuda(environment)\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/pytorch.py\", line 287, in _validate_cuda\n    raise UnavailableError(\ngpu_benchlab.core.errors.UnavailableError: Requested cuda:0, but PyTorch reports no usable CUDA device. NVIDIA detection reports 'ok'. Not falling back to CPU.\n",
+              "phase": "validate",
+              "timestamp_utc": "2026-09-20T12:53:17.938033+00:00"
+            }
+          ],
+          [
+            {
+              "type": "UnavailableError",
+              "message": "Requested cuda:0, but PyTorch reports no usable CUDA device. NVIDIA detection reports 'ok'. Not falling back to CPU.",
+              "traceback": "Traceback (most recent call last):\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/core/engine.py\", line 158, in run\n    backend.validate(config, self.environment)\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/pytorch.py\", line 256, in validate\n    self._validate_cuda(environment)\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/pytorch.py\", line 287, in _validate_cuda\n    raise UnavailableError(\ngpu_benchlab.core.errors.UnavailableError: Requested cuda:0, but PyTorch reports no usable CUDA device. NVIDIA detection reports 'ok'. Not falling back to CPU.\n",
+              "phase": "validate",
+              "timestamp_utc": "2026-09-20T12:51:09.748819+00:00"
+            }
+          ],
+          [
+            {
+              "type": "UnavailableError",
+              "message": "Requested cuda:0, but PyTorch reports no usable CUDA device. NVIDIA detection reports 'ok'. Not falling back to CPU.",
+              "traceback": "Traceback (most recent call last):\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/core/engine.py\", line 158, in run\n    backend.validate(config, self.environment)\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/pytorch.py\", line 256, in validate\n    self._validate_cuda(environment)\n  File \"/home/Claude2/gpu-benchlab/src/gpu_benchlab/backends/pytorch.py\", line 287, in _validate_cuda\n    raise UnavailableError(\ngpu_benchlab.core.errors.UnavailableError: Requested cuda:0, but PyTorch reports no usable CUDA device. NVIDIA detection reports 'ok'. Not falling back to CPU.\n",
+              "phase": "validate",
+              "timestamp_utc": "2026-09-20T12:51:59.552767+00:00"
+            }
+          ]
+        ],
+        "stdout_tail": "Running phase5a-pytorch-cuda-check (backend=pytorch, device=cuda:0, \nprecision=fp32, batch=1, warmup=10, iters=100)\n\nStatus: unavailable\nDevice: cuda (cuda:0)\nTiming mechanism: none (nothing was timed)\n\nPhases                       \nPhase                Duration\nModel load                n/a\nEngine build              n/a\nPrepare inputs            n/a\nWarmup (total)            n/a\nMeasurement (total)       n/a\n\nErrors                                                                          \nPhase     Type              Message                                             \nvalidate  UnavailableError  Requested cuda:0, but PyTorch reports no usable CUDA\n                            device. NVIDIA detection reports 'ok'. Not falling  \n                            back to CPU.                                        \n\n\nResult written to results/phase5a-raw/pytorch/negative-no-cuda/201bae92beb7\n"
+      }
+    },
+    {
+      "id": "versions",
+      "status": "INFO",
+      "description": "software",
+      "evidence": {
+        "torch": "2.14.0+cu130",
+        "cuda": "13.0",
+        "cudnn": 92400
+      }
+    }
+  ],
+  "section4": {
+    "settings": {
+      "device": "cuda:0",
+      "precision_mode": "cast",
+      "requested_precision": "fp32",
+      "torch_version": "2.14.0+cu130",
+      "torch_cuda_build": "13.0",
+      "cuda_device_name": "NVIDIA L4",
+      "cuda_capability": "8.9",
+      "tensor_core_for_precision": false,
+      "weights_downloaded_this_run": false,
+      "fp32_precision_api": "fp32_precision",
+      "fp32_precision.global": "none",
+      "fp32_precision.cudnn": "none",
+      "fp32_precision.cudnn.conv": "ieee",
+      "fp32_precision.cudnn.rnn": "ieee",
+      "fp32_precision.cuda.matmul": "ieee",
+      "cudnn.benchmark": true,
+      "cudnn.deterministic": false,
+      "cudnn_version": 92400,
+      "num_threads": 2,
+      "num_interop_threads": 2,
+      "cuda_flags_applicable": true,
+      "dtype": "float32",
+      "memory_format": "contiguous",
+      "grad_mode": "inference_mode",
+      "input_shape": "1x3x224x224",
+      "input_seed": 0,
+      "sanity_check": "passed"
+    }
+  },
+  "section5_raw": {
+    "workload": "torch.cuda._sleep",
+    "base_amount": 10016025.61375874,
+    "x1": {
+      "launch_ms": [
+        0.021309,
+        0.029476,
+        0.02932,
+        0.030254,
+        0.030825,
+        0.027018,
+        0.022214,
+        0.021368,
+        0.024709,
+        0.022963,
+        0.02216,
+        0.023455,
+        0.020583,
+        0.025699,
+        0.02084,
+        0.020544,
+        0.02124,
+        0.023271,
+        0.020392,
+        0.023581,
+        0.021245,
+        0.020922,
+        0.03695,
+        0.022857,
+        0.03028,
+        0.032362,
+        0.030181,
+        0.021358,
+        0.030913,
+        0.025784
+      ],
+      "host_sync_ms": [
+        4.943766,
+        4.950384,
+        4.950853,
+        4.950871,
+        4.951374,
+        4.944763,
+        4.940242,
+        4.939627,
+        4.944184,
+        4.942531,
+        4.942462,
+        4.942346,
+        4.93988,
+        4.943327,
+        4.938693,
+        4.938581,
+        4.941466,
+        4.941264,
+        4.940617,
+        4.941853,
+        4.941184,
+        4.948902,
+        4.955472,
+        4.958544,
+        4.963919,
+        4.964402,
+        4.962178,
+        4.959817,
+        4.965034,
+        4.958744
+      ],
+      "event_ms": [
+        4.918272018432617,
+        4.921343803405762,
+        4.921343803405762,
+        4.922368049621582,
+        4.922368049621582,
+        4.9203200340271,
+        4.919295787811279,
+        4.918272018432617,
+        4.91926383972168,
+        4.919295787811279,
+        4.919295787811279,
+        4.918272018432617,
+        4.918272018432617,
+        4.9203200340271,
+        4.917247772216797,
+        4.918272018432617,
+        4.919295787811279,
+        4.9203200340271,
+        4.918272018432617,
+        4.918272018432617,
+        4.918272018432617,
+        4.917247772216797,
+        4.925439834594727,
+        4.932608127593994,
+        4.937727928161621,
+        4.933631896972656,
+        4.940800189971924,
+        4.934591770172119,
+        4.937727928161621,
+        4.934656143188477
+      ]
+    },
+    "x2": {
+      "launch_ms": [
+        0.024112,
+        0.033335,
+        0.022978,
+        0.025264,
+        0.026594,
+        0.028822,
+        0.025125,
+        0.021052,
+        0.022401,
+        0.026664,
+        0.036509,
+        0.022331,
+        0.024378,
+        0.026096,
+        0.025126,
+        0.021401,
+        0.023824,
+        0.035131,
+        0.024246,
+        0.023195,
+        0.024901,
+        0.02207,
+        0.023647,
+        0.023179,
+        0.021811,
+        0.052798,
+        0.035732,
+        0.057532,
+        0.034442,
+        0.028551
+      ],
+      "host_sync_ms": [
+        9.893612,
+        9.893497,
+        9.884745,
+        9.886705,
+        9.886868,
+        9.886456,
+        9.879565,
+        9.863376,
+        9.862541,
+        9.866909,
+        9.877364,
+        9.862785,
+        9.868201,
+        9.867644,
+        9.86528,
+        9.86519,
+        9.872545,
+        9.876091,
+        9.86373,
+        9.865208,
+        9.864376,
+        9.863697,
+        9.866402,
+        9.865024,
+        9.895951,
+        9.895173,
+        9.909723,
+        9.901607,
+        9.87535,
+        9.873796
+      ],
+      "event_ms": [
+        9.860128402709961,
+        9.865216255187988,
+        9.859071731567383,
+        9.861120223999023,
+        9.863167762756348,
+        9.859071731567383,
+        9.855999946594238,
+        9.84166431427002,
+        9.837568283081055,
+        9.8406400680542,
+        9.842687606811523,
+        9.8406400680542,
+        9.842687606811523,
+        9.842687606811523,
+        9.842687606811523,
+        9.842687606811523,
+        9.839615821838379,
+        9.846783638000488,
+        9.8406400680542,
+        9.84166431427002,
+        9.839615821838379,
+        9.8406400680542,
+        9.843711853027344,
+        9.84166431427002,
+        9.842687606811523,
+        9.848832130432129,
+        9.845760345458984,
+        9.853952407836914,
+        9.843711853027344,
+        9.84166431427002
+      ]
+    },
+    "x4": {
+      "launch_ms": [
+        0.035815,
+        0.032159,
+        0.036339,
+        0.033009,
+        0.041552,
+        0.030455,
+        0.035807,
+        0.035338,
+        0.02913,
+        0.025117,
+        0.034837,
+        0.039179,
+        0.030941,
+        0.037684,
+        0.032889,
+        0.029656,
+        0.028338,
+        0.026882,
+        0.0399,
+        0.026313,
+        0.024932,
+        0.028099,
+        0.028436,
+        0.024865,
+        0.03273,
+        0.025329,
+        0.02966,
+        0.034554,
+        0.029248,
+        0.025987
+      ],
+      "host_sync_ms": [
+        19.71347,
+        19.711297,
+        19.710574,
+        19.726302,
+        19.718808,
+        19.7085,
+        19.714939,
+        19.70606,
+        19.702722,
+        19.69819,
+        19.719276,
+        19.717908,
+        19.709471,
+        19.715826,
+        19.714089,
+        19.706305,
+        19.709054,
+        19.723421,
+        19.716389,
+        19.702181,
+        19.701323,
+        19.70535,
+        19.70648,
+        19.70066,
+        19.707346,
+        19.711376,
+        19.70621,
+        19.712932,
+        19.705427,
+        19.697054
+      ],
+      "event_ms": [
+        19.67616081237793,
+        19.67616081237793,
+        19.680255889892578,
+        19.68435287475586,
+        19.68332862854004,
+        19.67411231994629,
+        19.6812801361084,
+        19.677183151245117,
+        19.678207397460938,
+        19.67206382751465,
+        19.6812801361084,
+        19.6812801361084,
+        19.677183151245117,
+        19.68435287475586,
+        19.68332862854004,
+        19.67616081237793,
+        19.68230438232422,
+        19.68332862854004,
+        19.68332862854004,
+        19.678207397460938,
+        19.67308807373047,
+        19.679231643676758,
+        19.684255599975586,
+        19.67616081237793,
+        19.6812801361084,
+        19.68230438232422,
+        19.677087783813477,
+        19.6812801361084,
+        19.679231643676758,
+        19.67206382751465
+      ]
+    },
+    "cuda_event_timer": {
+      "primary_ms": [
+        19.67308807373047,
+        19.67513656616211,
+        19.66796875,
+        19.671039581298828,
+        19.67308807373047,
+        19.671039581298828,
+        19.67308807373047,
+        19.66694450378418,
+        19.67308807373047,
+        19.668991088867188,
+        19.66489601135254,
+        19.66694450378418,
+        19.671039581298828,
+        19.66592025756836,
+        19.668991088867188,
+        19.67206382751465,
+        19.66489601135254,
+        19.66694450378418,
+        19.685375213623047,
+        19.694591522216797,
+        19.678112030029297,
+        19.670015335083008,
+        19.671039581298828,
+        19.670015335083008,
+        19.66694450378418,
+        19.66489601135254,
+        19.66796875,
+        19.666912078857422,
+        19.67308807373047,
+        19.66796875
+      ],
+      "secondary_host_ms": [
+        19.694872,
+        19.688468,
+        19.680951,
+        19.682441,
+        19.686986,
+        19.68679,
+        19.687831,
+        19.678354,
+        19.686324,
+        19.682493,
+        19.676145,
+        19.680856,
+        19.685193,
+        19.677749,
+        19.682632,
+        19.683803,
+        19.677037,
+        19.69691,
+        19.723239,
+        19.723273,
+        19.693547,
+        19.681432,
+        19.681611,
+        19.679837,
+        19.678869,
+        19.675793,
+        19.680172,
+        19.678885,
+        19.68442,
+        19.679453
+      ]
+    },
+    "unsynchronized_wall_clock_ms": [
+      0.016514,
+      0.038942,
+      0.013333,
+      0.008794,
+      0.008192,
+      0.008557,
+      0.009067,
+      0.01833,
+      0.01634,
+      0.008875,
+      0.014169,
+      0.013431,
+      0.042032,
+      0.024494,
+      0.044808,
+      0.015103,
+      0.05046,
+      0.018226,
+      0.013152,
+      0.015131,
+      0.016857,
+      0.010656,
+      0.009536,
+      0.048009,
+      0.051392,
+      0.052322,
+      0.017892,
+      0.030267,
+      0.015872,
+      0.009007
+    ]
+  }
+}

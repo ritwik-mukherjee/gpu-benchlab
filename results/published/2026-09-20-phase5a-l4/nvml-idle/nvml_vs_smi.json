@@ -1,0 +1,435 @@
+{
+  "script": "nvml_vs_smi",
+  "argv": [
+    "analysis/gpu_validation/nvml_vs_smi.py",
+    "results/phase5a-raw/nvml-idle"
+  ],
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "platform": "Linux-7.0.0-1011-gcp-x86_64-with-glibc2.39",
+  "cuda_visible_devices": null,
+  "checks": [
+    {
+      "id": "status",
+      "status": "PASS",
+      "description": "gpu_benchlab NVML detection succeeded",
+      "evidence": {
+        "detection_status": "ok",
+        "error": null
+      }
+    },
+    {
+      "id": "count",
+      "status": "PASS",
+      "description": "GPU count matches nvidia-smi -L",
+      "evidence": {
+        "tool": 1,
+        "smi": 1
+      }
+    },
+    {
+      "id": "driver",
+      "status": "PASS",
+      "description": "driver version matches",
+      "evidence": {
+        "tool": "580.159.04",
+        "smi": "580.159.04"
+      }
+    },
+    {
+      "id": "cuda_driver_version",
+      "status": "PASS",
+      "description": "max CUDA version supported by the driver matches the nvidia-smi header",
+      "evidence": {
+        "tool": "13.0",
+        "smi": "NVIDIA-SMI 580.159.04             Driver Version: 580.159.04     CUDA Version: 13.0"
+      }
+    },
+    {
+      "id": "gpu0.name",
+      "status": "PASS",
+      "description": "name vs nvidia-smi name (exact)",
+      "evidence": {
+        "tool": "NVIDIA L4",
+        "smi_before": "NVIDIA L4",
+        "smi_after": "NVIDIA L4",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.uuid",
+      "status": "PASS",
+      "description": "uuid vs nvidia-smi uuid (exact)",
+      "evidence": {
+        "tool": "GPU-87526505-0c69-6e59-3319-a76a2381b420",
+        "smi_before": "GPU-87526505-0c69-6e59-3319-a76a2381b420",
+        "smi_after": "GPU-87526505-0c69-6e59-3319-a76a2381b420",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.pci_bus_id",
+      "status": "PASS",
+      "description": "pci_bus_id vs nvidia-smi pci.bus_id (exact_ci)",
+      "evidence": {
+        "tool": "00000000:00:03.0",
+        "smi_before": "00000000:00:03.0",
+        "smi_after": "00000000:00:03.0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.serial",
+      "status": "PASS",
+      "description": "serial vs nvidia-smi serial (exact)",
+      "evidence": {
+        "tool": "1322923033737",
+        "smi_before": "1322923033737",
+        "smi_after": "1322923033737",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.compute_capability",
+      "status": "PASS",
+      "description": "compute_capability vs nvidia-smi compute_cap (exact)",
+      "evidence": {
+        "tool": "8.9",
+        "smi_before": "8.9",
+        "smi_after": "8.9",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.memory_total_bytes",
+      "status": "PASS",
+      "description": "memory_total_bytes vs nvidia-smi memory.total (mib)",
+      "evidence": {
+        "tool": 24152899584,
+        "smi_before": "23034",
+        "smi_after": "23034",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.power_limit_watts",
+      "status": "PASS",
+      "description": "power_limit_watts vs nvidia-smi enforced.power.limit (float)",
+      "evidence": {
+        "tool": 72.0,
+        "smi_before": "72.00",
+        "smi_after": "72.00",
+        "tolerance": 0.5
+      }
+    },
+    {
+      "id": "gpu0.max_sm_clock_mhz",
+      "status": "PASS",
+      "description": "max_sm_clock_mhz vs nvidia-smi clocks.max.sm (float)",
+      "evidence": {
+        "tool": 2040,
+        "smi_before": "2040",
+        "smi_after": "2040",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.max_memory_clock_mhz",
+      "status": "PASS",
+      "description": "max_memory_clock_mhz vs nvidia-smi clocks.max.mem (float)",
+      "evidence": {
+        "tool": 6251,
+        "smi_before": "6251",
+        "smi_after": "6251",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.persistence_mode",
+      "status": "PASS",
+      "description": "persistence_mode vs nvidia-smi persistence_mode (enabled)",
+      "evidence": {
+        "tool": false,
+        "smi_before": "Disabled",
+        "smi_after": "Disabled",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.compute_mode",
+      "status": "PASS",
+      "description": "compute_mode vs nvidia-smi compute_mode (lower)",
+      "evidence": {
+        "tool": "default",
+        "smi_before": "Default",
+        "smi_after": "Default",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "gpu0.temperature_celsius",
+      "status": "PASS",
+      "description": "temperature_celsius vs nvidia-smi temperature.gpu (dynamic)",
+      "evidence": {
+        "tool": 49,
+        "smi_before": "49",
+        "smi_after": "49",
+        "tolerance": 2
+      }
+    },
+    {
+      "id": "gpu0.utilization_gpu_percent",
+      "status": "PASS",
+      "description": "utilization_gpu_percent vs nvidia-smi utilization.gpu (dynamic)",
+      "evidence": {
+        "tool": 0,
+        "smi_before": "4",
+        "smi_after": "4",
+        "tolerance": 10
+      }
+    },
+    {
+      "id": "gpu0.utilization_memory_percent",
+      "status": "PASS",
+      "description": "utilization_memory_percent vs nvidia-smi utilization.memory (dynamic)",
+      "evidence": {
+        "tool": 0,
+        "smi_before": "0",
+        "smi_after": "0",
+        "tolerance": 10
+      }
+    },
+    {
+      "id": "gpu0.power_usage_watts",
+      "status": "PASS",
+      "description": "power_usage_watts vs nvidia-smi power.draw (dynamic)",
+      "evidence": {
+        "tool": 30.402,
+        "smi_before": "30.30",
+        "smi_after": "30.50",
+        "tolerance": 5
+      }
+    },
+    {
+      "id": "gpu0.sm_clock_mhz",
+      "status": "PASS",
+      "description": "sm_clock_mhz vs nvidia-smi clocks.sm (dynamic)",
+      "evidence": {
+        "tool": 2040,
+        "smi_before": "2040",
+        "smi_after": "2040",
+        "tolerance": 50
+      }
+    },
+    {
+      "id": "gpu0.memory_clock_mhz",
+      "status": "PASS",
+      "description": "memory_clock_mhz vs nvidia-smi clocks.mem (dynamic)",
+      "evidence": {
+        "tool": 6251,
+        "smi_before": "6251",
+        "smi_after": "6251",
+        "tolerance": 50
+      }
+    },
+    {
+      "id": "gpu0.memory_used_bytes",
+      "status": "INCONCLUSIVE",
+      "description": "memory_used_bytes vs nvidia-smi memory.used (dynamic_mib)",
+      "evidence": {
+        "tool": 493748224,
+        "smi_before": "0",
+        "smi_after": "0",
+        "tolerance": 64
+      }
+    },
+    {
+      "id": "gpu0.memory_free_bytes",
+      "status": "PASS",
+      "description": "memory_free_bytes vs nvidia-smi memory.free (dynamic_mib)",
+      "evidence": {
+        "tool": 23659151360,
+        "smi_before": "22564",
+        "smi_after": "22564",
+        "tolerance": 64
+      }
+    },
+    {
+      "id": "torch0.core_count",
+      "status": "INFO",
+      "description": "NVML CUDA cores vs the CUDA runtime's SM count (matched by UUID). NVML exposes no SM count, so these must differ; the ratio is cores per SM.",
+      "evidence": {
+        "torch_uuid": "87526505-0c69-6e59-3319-a76a2381b420",
+        "torch_sm_count": 58,
+        "nvml_gpu": 0,
+        "nvml_cuda_core_count": 7424,
+        "cores_per_sm": 128.0
+      }
+    },
+    {
+      "id": "raw",
+      "status": "INFO",
+      "description": "raw readings stored",
+      "evidence": {
+        "smi_listing": "GPU 0: NVIDIA L4 (UUID: GPU-87526505-0c69-6e59-3319-a76a2381b420)\n",
+        "smi_header": "Sun Sep 20 12:50:37 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.159.04             Driver Version: 580.159.04     CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA L4                      Off |   00000000:00:03.0 Off |                    0 |\n| N/A   48C    P0             30W /   72W |       0MiB /  23034MiB |      4%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n"
+      }
+    }
+  ],
+  "environment": {
+    "schema_version": "1.2",
+    "timestamp_utc": "2026-09-20T12:50:41.740903+00:00",
+    "benchlab_version": "0.1.0",
+    "host": {
+      "hostname": "gpu-benchlab-l4.asia-south1-b.c.gpu-benchlab.internal",
+      "os_name": "Linux",
+      "os_version": "#11~24.04.1-Ubuntu SMP PREEMPT Tue Aug 11 20:14:48 UTC 2026",
+      "os_release": "7.0.0-1011-gcp",
+      "architecture": "x86_64",
+      "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+      "cpu_physical_cores": 2,
+      "cpu_logical_cores": 4,
+      "total_memory_bytes": 16762155008,
+      "python_version": "3.12.3",
+      "python_implementation": "CPython",
+      "python_executable": "/home/Claude2/gpu-benchlab/.venv/bin/python",
+      "power_plugged": null,
+      "battery_percent": null
+    },
+    "nvml": {
+      "driver_version": "580.159.04",
+      "nvml_version": "13.580.159.04",
+      "cuda_driver_version": "13.0"
+    },
+    "gpus": [
+      {
+        "index": 0,
+        "name": "NVIDIA L4",
+        "uuid": "GPU-87526505-0c69-6e59-3319-a76a2381b420",
+        "pci_bus_id": "00000000:00:03.0",
+        "serial": "1322923033737",
+        "architecture": "Ada Lovelace",
+        "compute_capability": "8.9",
+        "compute_capability_major": 8,
+        "compute_capability_minor": 9,
+        "cuda_core_count": 7424,
+        "memory_total_bytes": 24152899584,
+        "memory_free_bytes": 23659151360,
+        "memory_used_bytes": 493748224,
+        "utilization_gpu_percent": 0,
+        "utilization_memory_percent": 0,
+        "temperature_celsius": 49,
+        "power_usage_watts": 30.402,
+        "power_limit_watts": 72.0,
+        "sm_clock_mhz": 2040,
+        "max_sm_clock_mhz": 2040,
+        "memory_clock_mhz": 6251,
+        "max_memory_clock_mhz": 6251,
+        "persistence_mode": false,
+        "compute_mode": "default",
+        "precision_support": [
+          {
+            "precision": "fp32",
+            "supported": true,
+            "tensor_core": false,
+            "note": "Baseline format; supported on every CUDA GPU."
+          },
+          {
+            "precision": "tf32",
+            "supported": true,
+            "tensor_core": true,
+            "note": "TF32 tensor-core path for FP32 math (SM 8.0+)."
+          },
+          {
+            "precision": "fp16",
+            "supported": true,
+            "tensor_core": true,
+            "note": "FP16 with tensor-core acceleration (SM 7.0+)."
+          },
+          {
+            "precision": "bf16",
+            "supported": true,
+            "tensor_core": true,
+            "note": "BF16 tensor cores (SM 8.0+)."
+          },
+          {
+            "precision": "int8",
+            "supported": true,
+            "tensor_core": true,
+            "note": "INT8 tensor cores (SM 7.5+)."
+          },
+          {
+            "precision": "fp8",
+            "supported": true,
+            "tensor_core": true,
+            "note": "FP8 (E4M3/E5M2) tensor cores."
+          },
+          {
+            "precision": "int4",
+            "supported": true,
+            "tensor_core": true,
+            "note": "INT4 tensor-core path (SM 7.5-9.x); deprecated on newer parts."
+          },
+          {
+            "precision": "fp4",
+            "supported": false,
+            "tensor_core": false,
+            "note": "Requires Blackwell (SM 10.0+)."
+          }
+        ]
+      }
+    ],
+    "frameworks": [],
+    "detection_status": "ok",
+    "detection_error": null
+  },
+  "smi_before": [
+    {
+      "index": "0",
+      "driver_version": "580.159.04",
+      "name": "NVIDIA L4",
+      "uuid": "GPU-87526505-0c69-6e59-3319-a76a2381b420",
+      "pci.bus_id": "00000000:00:03.0",
+      "serial": "1322923033737",
+      "compute_cap": "8.9",
+      "memory.total": "23034",
+      "enforced.power.limit": "72.00",
+      "clocks.max.sm": "2040",
+      "clocks.max.mem": "6251",
+      "persistence_mode": "Disabled",
+      "compute_mode": "Default",
+      "temperature.gpu": "49",
+      "utilization.gpu": "4",
+      "utilization.memory": "0",
+      "power.draw": "30.30",
+      "clocks.sm": "2040",
+      "clocks.mem": "6251",
+      "memory.used": "0",
+      "memory.free": "22564"
+    }
+  ],
+  "smi_after": [
+    {
+      "index": "0",
+      "driver_version": "580.159.04",
+      "name": "NVIDIA L4",
+      "uuid": "GPU-87526505-0c69-6e59-3319-a76a2381b420",
+      "pci.bus_id": "00000000:00:03.0",
+      "serial": "1322923033737",
+      "compute_cap": "8.9",
+      "memory.total": "23034",
+      "enforced.power.limit": "72.00",
+      "clocks.max.sm": "2040",
+      "clocks.max.mem": "6251",
+      "persistence_mode": "Disabled",
+      "compute_mode": "Default",
+      "temperature.gpu": "49",
+      "utilization.gpu": "4",
+      "utilization.memory": "0",
+      "power.draw": "30.50",
+      "clocks.sm": "2040",
+      "clocks.mem": "6251",
+      "memory.used": "0",
+      "memory.free": "22564"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+Running p5a-controlled-pytorch-cuda-fp32-b1 (backend=pytorch, device=cuda:0, 
+precision=fp32, batch=1, warmup=100, iters=1000)
+
+Status: ok
+Device: cuda (cuda:0)
+Timing mechanism: cuda_event
+Secondary timing: wall_clock_synchronized (reported separately; never the 
+headline)
+Model: resnet50 (ResNet, 25,557,032 params, weights IMAGENET1K_V2, sha256 
+11ad3fa62ca79e40...)
+
+Phases                          
+Phase                   Duration
+Model load           2119.441 ms
+Engine build            0.009 ms
+Prepare inputs        600.275 ms
+Warmup (total)        583.127 ms
+Measurement (total)  5811.199 ms
+
+Latency              
+Statistic     Value  
+samples        1000  
+min        5.637 ms  
+mean       5.766 ms  
+median     5.748 ms  
+p50        5.748 ms  
+p90        5.857 ms  
+p95        5.903 ms  
+p99        6.129 ms  
+max        6.563 ms  
+std dev    0.091 ms  
+
+Throughput                                                                    
+ Value  Unit         Derived from                                             
+173.42  samples/sec  batch_size / mean_latency_s                              
+172.08  samples/sec  measurement_iterations * batch_size / measurement_total_s
+
+Secondary (wall_clock_synchronized): p50 5.760 ms, p95 5.916 ms, mean 5.778 ms
+
+
+Result written to results/phase5a-raw/runs/ctl-pytorch-b1-r1/3ff5af857e51

@@ -1,0 +1,43 @@
+Running p5a-controlled-onnxruntime-cuda-fp32-b1 (backend=onnxruntime, 
+device=cuda:0, precision=fp32, batch=1, warmup=100, iters=1000)
+
+[0;93m2026-09-20 13:07:07.795946166 [W:onnxruntime:Default, onnxruntime_pybind_state.cc:855 operator()] No registered plugin EP device found for 'CUDAExecutionProvider' with device_id=0[m
+[0;93m2026-09-20 13:07:08.094152437 [W:onnxruntime:Default, onnxruntime_pybind_state.cc:855 operator()] No registered plugin EP device found for 'CUDAExecutionProvider' with device_id=0[m
+[1;31m2026-09-20 13:07:08.547308662 [E:onnxruntime:Default, cudnn_fe_call.cc:39 CudaErrString<cudnn_frontend::error_object>] [cudnn_frontend] Error: No execution plans support the graph.[m
+[1;31m2026-09-20 13:07:08.571501601 [E:onnxruntime:Default, cudnn_fe_call.cc:39 CudaErrString<cudnn_frontend::error_object>] [cudnn_frontend] Error: No execution plans support the graph.[m
+[1;31m2026-09-20 13:07:08.690918174 [E:onnxruntime:Default, cudnn_fe_call.cc:39 CudaErrString<cudnn_frontend::error_object>] [cudnn_frontend] Error: No execution plans support the graph.[m
+[1;31m2026-09-20 13:07:08.697974731 [E:onnxruntime:Default, cudnn_fe_call.cc:39 CudaErrString<cudnn_frontend::error_object>] [cudnn_frontend] Error: No execution plans support the graph.[m
+Status: ok
+Device: cuda (cuda:0)
+Timing mechanism: wall_clock
+Model: resnet50 (ResNet, 25,557,032 params, weights IMAGENET1K_V2, sha256 
+11ad3fa62ca79e40...)
+
+Phases                          
+Phase                   Duration
+Model load            334.659 ms
+Engine build          289.524 ms
+Prepare inputs        728.221 ms
+Warmup (total)        309.901 ms
+Measurement (total)  3194.449 ms
+
+Latency              
+Statistic     Value  
+samples        1000  
+min        3.115 ms  
+mean       3.192 ms  
+median     3.184 ms  
+p50        3.184 ms  
+p90        3.253 ms  
+p95        3.258 ms  
+p99        3.271 ms  
+max        3.494 ms  
+std dev    0.044 ms  
+
+Throughput                                                                    
+ Value  Unit         Derived from                                             
+313.30  samples/sec  batch_size / mean_latency_s                              
+313.04  samples/sec  measurement_iterations * batch_size / measurement_total_s
+
+
+Result written to results/phase5a-raw/runs/ctl-onnxruntime-b1-r2/663322f836bc

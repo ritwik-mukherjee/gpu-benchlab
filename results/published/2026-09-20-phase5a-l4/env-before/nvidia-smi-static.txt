@@ -1,0 +1,4 @@
+$ nvidia-smi --format=csv --query-gpu=index,name,uuid,pci.bus_id,serial,compute_cap,memory.total,driver_version,vbios_version,power.limit,enforced.power.limit,power.max_limit,clocks.max.sm,clocks.max.mem,persistence_mode,compute_mode,mig.mode.current,ecc.mode.current,pcie.link.gen.max,pcie.link.width.max
+index, name, uuid, pci.bus_id, serial, compute_cap, memory.total [MiB], driver_version, vbios_version, power.limit [W], enforced.power.limit [W], power.max_limit [W], clocks.max.sm [MHz], clocks.max.memory [MHz], persistence_mode, compute_mode, mig.mode.current, ecc.mode.current, pcie.link.gen.max, pcie.link.width.max
+0, NVIDIA L4, GPU-87526505-0c69-6e59-3319-a76a2381b420, 00000000:00:03.0, 1322923033737, 8.9, 23034 MiB, 580.159.04, 95.04.29.00.07, 72.00 W, 72.00 W, 72.00 W, 2040 MHz, 6251 MHz, Disabled, Default, [N/A], Enabled, 3, 16
+[exit 0]

@@ -1,0 +1,1 @@
+{"name": "phase5a-ort-cuda-hidden", "backend": "onnxruntime", "device": "cuda:0", "precision": "fp32", "batch_size": 1, "model": {"name": "resnet50", "weights": "IMAGENET1K_V2"}, "backend_options": {"allow_export": false}, "benchmark": {"warmup_iterations": 10, "measurement_iterations": 100}}

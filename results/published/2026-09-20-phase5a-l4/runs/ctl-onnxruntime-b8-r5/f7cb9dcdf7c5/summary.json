@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "f7cb9dcdf7c5",
+  "status": "ok",
+  "is_simulated": false,
+  "backend": "onnxruntime",
+  "device_kind": "cuda",
+  "device": "cuda:0",
+  "precision": "fp32",
+  "batch_size": 8,
+  "timing_mechanism": "wall_clock",
+  "measures_steady_state": true,
+  "phases": {
+    "model_load_ms": 335.366902,
+    "engine_build_ms": 287.881718,
+    "prepare_inputs_ms": 739.380872,
+    "warmup_total_ms": 1249.693892,
+    "measurement_total_ms": 12678.744093
+  },
+  "latency_ms": {
+    "count": 1000,
+    "min_ms": 12.296362,
+    "max_ms": 13.06375,
+    "mean_ms": 12.674009429000002,
+    "median_ms": 12.674809,
+    "stddev_ms": 0.13947531416937411,
+    "p50_ms": 12.674809,
+    "p90_ms": 12.877422600000001,
+    "p95_ms": 12.90450375,
+    "p99_ms": 13.01312735,
+    "percentile_method": "linear",
+    "stddev_ddof": 1,
+    "low_confidence_percentiles": []
+  },
+  "secondary_timing_mechanism": null,
+  "secondary_latency_ms": null,
+  "throughput": [
+    {
+      "value": 631.2130383692804,
+      "unit": "samples/sec",
+      "basis": "batch_size / mean_latency_s"
+    },
+    {
+      "value": 630.9773224634167,
+      "unit": "samples/sec",
+      "basis": "measurement_iterations * batch_size / measurement_total_s"
+    }
+  ],
+  "errors": [],
+  "notes": []
+}

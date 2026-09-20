@@ -1,0 +1,44 @@
+Running p5a-warmup-onnxruntime-cuda-fp32-b1 (backend=onnxruntime, device=cuda:0,
+precision=fp32, batch=1, warmup=300, iters=1000)
+
+[0;93m2026-09-20 12:55:17.110262633 [W:onnxruntime:Default, onnxruntime_pybind_state.cc:855 operator()] No registered plugin EP device found for 'CUDAExecutionProvider' with device_id=0[m
+[0;93m2026-09-20 12:55:17.411755890 [W:onnxruntime:Default, onnxruntime_pybind_state.cc:855 operator()] No registered plugin EP device found for 'CUDAExecutionProvider' with device_id=0[m
+[1;31m2026-09-20 12:55:17.867701034 [E:onnxruntime:Default, cudnn_fe_call.cc:39 CudaErrString<cudnn_frontend::error_object>] [cudnn_frontend] Error: No execution plans support the graph.[m
+[1;31m2026-09-20 12:55:17.892384908 [E:onnxruntime:Default, cudnn_fe_call.cc:39 CudaErrString<cudnn_frontend::error_object>] [cudnn_frontend] Error: No execution plans support the graph.[m
+[1;31m2026-09-20 12:55:18.012180441 [E:onnxruntime:Default, cudnn_fe_call.cc:39 CudaErrString<cudnn_frontend::error_object>] [cudnn_frontend] Error: No execution plans support the graph.[m
+[1;31m2026-09-20 12:55:18.019170076 [E:onnxruntime:Default, cudnn_fe_call.cc:39 CudaErrString<cudnn_frontend::error_object>] [cudnn_frontend] Error: No execution plans support the graph.[m
+Status: ok
+Device: cuda (cuda:0)
+Timing mechanism: wall_clock
+Model: resnet50 (ResNet, 25,557,032 params, weights IMAGENET1K_V2, sha256 
+11ad3fa62ca79e40...)
+
+Phases                          
+Phase                   Duration
+Model load            335.150 ms
+Engine build          293.538 ms
+Prepare inputs        731.038 ms
+Warmup (total)        929.941 ms
+Measurement (total)  3149.182 ms
+
+Latency              
+Statistic     Value  
+samples        1000  
+min        3.082 ms  
+mean       3.147 ms  
+median     3.140 ms  
+p50        3.140 ms  
+p90        3.192 ms  
+p95        3.208 ms  
+p99        3.247 ms  
+max        3.352 ms  
+std dev    0.037 ms  
+
+Throughput                                                                    
+ Value  Unit         Derived from                                             
+317.79  samples/sec  batch_size / mean_latency_s                              
+317.54  samples/sec  measurement_iterations * batch_size / measurement_total_s
+
+
+Result written to 
+results/phase5a-raw/runs/warmup-onnxruntime-cuda-fp32-b1-r1/ac921f8c1ea0
