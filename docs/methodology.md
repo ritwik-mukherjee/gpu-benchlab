@@ -89,15 +89,24 @@ slow on the first run and impossibly fast afterwards.
 > stationary state. See §12. The defaults below are still a hypothesis.
 
 The first iterations of any GPU workload are not representative. They include
-CUDA context initialization, kernel autotuning and algorithm selection (notably
-cuDNN benchmark mode), lazy memory allocation and allocator cache population,
-JIT compilation, and clock ramp from idle.
+CUDA context initialization, lazy memory allocation and allocator cache
+population, JIT compilation, and clock ramp from idle.
+
+**Where autotuning actually happens, measured on an L4 (2026-09-20):** cuDNN
+benchmark mode tunes at the first forward pass of a given shape, which in the
+PyTorch backend is the **untimed sanity pass in `prepare()`**, not during warmup.
+Turning it on moved `prepare_inputs_ms` from 363–371 ms to 585–595 ms (ResNet-50,
+batch 1, 3 repeats each) and lowered the steady-state median from 5.616–5.646 ms
+to 5.488–5.571 ms. So autotuning cost is already excluded from latency by phase
+separation, and warmup does not exist to absorb it.
 
 Defaults are **10 warmup iterations** and **100 measured iterations**, both
 configurable. The rationale:
 
-- 10 is generally enough to get past allocator and autotune effects for small
-  vision models at small batch sizes.
+- 10 is intended to get past allocator effects and clock ramp for small vision
+  models at small batch sizes. On the L4 that held for PyTorch (first 10 within
+  0.6–2.0% of steady state) but **not** for ONNX Runtime (first 10 were 7.1–8.6%
+  faster than its steady state); see [limitations.md](limitations.md) §3b.
 - 100 gives a usable p95 and a meaningful p99 is *not* claimed from it — see §6.
 - Both numbers are recorded in the result, so a reader can judge them.
 
@@ -292,9 +301,12 @@ verdict from them.
   (122 nodes) to 58 on CPU, including a hardware-specific NCHWc layout; eager PyTorch
   runs the unfused graph. That is part of what a runtime comparison measures and must
   be stated with it.
-- **Benchmark inputs differ between backends** (PyTorch: `torch.randn`; ORT: numpy).
-  Shape and dtype match; values do not. Must be unified before any cross-backend
-  latency comparison (the correctness check already uses identical inputs).
+- ~~**Benchmark inputs differ between backends.**~~ **Fixed 2026-09-20:** every
+  executing backend draws its benchmark input from `core.inputs.synthetic_input`, so the
+  values are bit-identical for a given shape and seed;
+  `tests/unit/test_input_identity.py` fails if a backend deviates, and each result
+  records `input_generator`. Runs published before that date used `torch.randn` for
+  PyTorch and numpy for ORT, and must not be pooled with later ones.
 - **Thread configuration differs** unless set explicitly (PyTorch recorded 4 intra-op
   threads; ORT used its own default).
 

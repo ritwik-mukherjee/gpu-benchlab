@@ -6,6 +6,33 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Changed — Phase 5A cleanup (methodology and evidence)
+
+- **One input generator for every backend.** `PyTorchBackend` drew benchmark inputs from
+  `torch.randn` while ONNX Runtime used numpy: same shape, dtype and distribution,
+  different values. Both now take the canonical array from `core.inputs.synthetic_input`,
+  so a cross-backend comparison differs only in the runtime under test. Each result
+  records `input_generator`; runs published before this change used the old PyTorch
+  stream and must not be pooled with later ones.
+- **Correlation is no longer written as causation.** The power-cap findings in
+  `limitations.md`, the Phase 5A evidence README and `ENGINEERING_LOG.md` now separate
+  measured telemetry, observed association and interpretation, and state that no causal
+  direction between throughput and the 72 W cap was tested.
+- **`PyTorchOptions.cudnn_benchmark` described autotuning wrongly.** It happens at the
+  first forward pass of a shape — the untimed sanity pass in `prepare()` — not during
+  warmup. Docstring, methodology §7 and limitations now carry the measured numbers.
+
+### Added — Phase 5A cleanup
+
+- `tests/unit/test_input_identity.py`: 12 tests proving every executing backend receives
+  bit-identical inputs, iterating `EXECUTING_BACKENDS` so a future backend is covered
+  automatically, plus an explicit assertion of the precision-cast conversion boundary.
+- `analysis/sanitize_evidence.py`: generates a redacted **copy** of an evidence tree
+  (hostname, GPU UUID and serial, home paths, arbitrary `--replace` literals) and
+  verifies the redaction; raw evidence is never modified.
+- `limitations.md` §1b explains why a CUDA machine reports 7 skips where a CPU machine
+  reports none, test by test.
+
 ### Added — Phase 5A: first validation on NVIDIA hardware (NVIDIA L4)
 
 - **The first GPU measurements in this repository**, all from one `g2-standard-4`

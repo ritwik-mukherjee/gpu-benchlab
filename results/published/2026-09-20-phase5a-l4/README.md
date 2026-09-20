@@ -2,7 +2,12 @@
 
 **This is the first GPU data in this repository.** Everything here was produced on one
 Google Cloud `g2-standard-4` instance with a single NVIDIA L4, copied exactly as the
-tools wrote it. Nothing was edited, and no number here came from anywhere else.
+tools wrote it, and no number here came from anywhere else.
+
+**The data files are never edited.** This README is the only human-written file in this
+directory; it is revised when later work changes how the data should be read (each such
+revision is a commit), while every JSON, CSV, log and `.npz` beside it stays byte-for-byte
+as produced. `NOTES.md` is the operator log written during the session.
 
 Hardware and software, as recorded in every result's `environment` block:
 
@@ -17,10 +22,16 @@ Hardware and software, as recorded in every result's `environment` block:
 | ONNX artifact | opset 20, dynamic batch, SHA-256 `7084761c…` (exported on this machine) |
 | Commit | every run carries `git_commit` with `git_dirty: false` |
 
-The CUDA libraries used were the wheel-provided ones (`libcudart.so.13`,
-`libcublas.so.13`, `libcudnn.so.9`), recorded per process in `ort/*/ort_cuda_check.json`.
-`LD_LIBRARY_PATH` was unset, so the separately installed CUDA 13.4 toolkit was **not**
-used — relevant because that toolkit's default PTX is rejected by this R580 driver.
+Every successful run loaded its CUDA libraries from the venv wheels
+(`nvidia/cu13/lib/libcudart.so.13`, `libcublas.so.13`, `nvidia/cudnn/lib/libcudnn.so.9`),
+recorded per process in `ort/*/ort_cuda_check.json`. `LD_LIBRARY_PATH` was unset, so the
+separately installed CUDA 13.4 toolkit was not used by them — relevant because that
+toolkit's default PTX is rejected by this R580 driver.
+
+The one exception is instructive and is kept deliberately: in `ort/b8-no-torch/`, where
+nothing had preloaded the wheels, ONNX Runtime resolved `libcublas`/`libcudart` from
+`/usr/local/cuda-13.4/` through the system loader and found **no `libcudnn` at all** —
+which is exactly why that run failed at the first Conv.
 
 ## What is here
 
@@ -98,29 +109,58 @@ Phases 3–4.
 
 ## Conditions that qualify these numbers
 
-- **Power cap.** The L4's 72 W limit was reached in three of the four cells, flagged by
-  the driver as `SwPowerCap` on essentially every busy sample: ORT at batch 1
-  (SM clock 1665–1755 MHz), ORT at batch 8 and PyTorch at batch 8 (both ~1230–1260 MHz).
-  **PyTorch at batch 1 never hit the cap** (57–65 W) and held 2040 MHz throughout. The
-  backends are therefore not competing under identical clocks — ORT at batch 1 is
-  power-limited precisely because it completes more work per second.
+- **Power and clock telemetry.**
+  *Measured:* the driver reported `SwPowerCap` on essentially every busy sample in three
+  cells — ORT batch 1 (SM clock 1665–1755 MHz), ORT batch 8 and PyTorch batch 8 (both
+  ~1230–1260 MHz). **PyTorch at batch 1 carried no such flag** (57–65 W) and held
+  2040 MHz throughout.
+  *Observed association:* the capped cells also ran at lower SM clocks than the uncapped
+  one.
+  *Interpretation (not established here):* the cells did not execute at identical
+  clocks, so part of any latency difference may reflect that rather than the runtimes.
+  **No causal direction was tested.** Whether a backend's rate of work drives the cap,
+  or the cap constrains the backend, would need locked clocks or a swept power limit —
+  neither was done in this run.
 - **Session-level warming.** GPU temperature rose from 55 °C to 80 °C over the session
   and later repeats are slightly slower (e.g. ORT batch 1: 3.134 → 3.294 ms). The
   alternating order spreads this across both backends rather than removing it. No
   thermal-slowdown flag was ever raised.
-- **Warmup differs by backend.** PyTorch's first 10 iterations are within 0.6–2.0% of
-  steady state; **ORT's first 10 are 7.1–8.6% faster**, because it starts at the 2040 MHz
-  boost clock and is then power-capped down. 10 warmup iterations would have been
-  insufficient for ORT; these runs used 100.
-- **Input generators still differ** (`torch.randn` for PyTorch, numpy PCG64 for ORT).
-  Values differ while shape, dtype and distribution match. For a dense CNN with no
-  data-dependent control flow this is not expected to affect latency, but it is an
-  uncontrolled difference and is not yet fixed.
+- **Warmup differs by backend.** *Measured:* PyTorch's first 10 iterations are within
+  0.6–2.0% of steady state; **ORT's first 10 are 7.1–8.6% faster** than its own steady
+  state. *Associated telemetry:* ORT's SM clock starts at 2040 MHz and falls to
+  1665–1755 MHz as `SwPowerCap` appears. *Interpretation:* consistent with early
+  iterations running at boost clocks before the cap engages — observed, not isolated by
+  experiment. 10 warmup iterations would have been insufficient for ORT either way;
+  these runs used 100.
+- **Input generators differed when these runs were made** (`torch.randn` for PyTorch,
+  numpy PCG64 for ORT): same shape, dtype and distribution, different values. For a dense
+  CNN with no data-dependent control flow this is not expected to affect latency, but it
+  was an uncontrolled difference. **It was fixed after these runs** — both backends now
+  take the canonical array from `core.inputs`, and each result records `input_generator`.
+  These runs predate that change; a later comparison should not be pooled with them.
 - **Peak VRAM is not measured in-process.** The `memory.used` figures in `telemetry/`
   come from 100 ms `nvidia-smi` sampling, which also catches load and export phases;
   they are not a reliable peak for the measured loop.
 - ORT executes 122 nodes on CUDA, where on the CPU EP it fused the same graph to 58.
   The graphs being executed are not identical in shape.
+
+## Sharing this outside the project
+
+These files carry infrastructure identifiers, because that is what the tools recorded:
+the VM hostname, the GPU UUID and board serial, and `/home/<user>` paths. They are kept
+as-is — editing evidence to make it prettier is how evidence stops being evidence.
+
+To hand a copy to someone outside the project, generate a redacted one instead:
+
+```
+python analysis/sanitize_evidence.py results/published/2026-09-20-phase5a-l4 /tmp/phase5a-public --host gpu-benchlab-l4
+```
+
+It writes a separate tree (287 files), never touching the source, and then verifies that
+no redacted pattern survives in the copy. IPv4-shaped strings are **reported, not
+rewritten**, because `libcublas.so.13.8.0.4` and `cuDNN 9.24.0.43` are indistinguishable
+from addresses by shape; pass `--replace OLD=NEW` for anything that really is one. There
+are no credentials, tokens or keys in this directory, and no external IP address.
 
 ## Re-deriving the verdicts
 

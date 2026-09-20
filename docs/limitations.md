@@ -58,6 +58,35 @@ GPU work runs on a cloud L4 instance.
 | **First GPU benchmark, ResNet-50 FP32 on an L4** | 20 controlled runs (2 backends × batch 1 and 8 × 5 repeats, alternating order), all `ok`, no anomalies, run-to-run spread 1.66–4.90%, with 100 ms NVML telemetry. Evidence: `results/published/2026-09-20-phase5a-l4/` |
 | **NVML success path on a real GPU** | Executed on an NVIDIA L4 (2026-09-20): detection OK, and 19 fields compared with `nvidia-smi` taken either side of the reading. All static fields matched exactly (name, UUID, PCI bus ID, serial, capability 8.9, total memory, 72 W limit, max clocks, persistence, compute mode); dynamic fields fell inside the bracket. Two findings, both now documented: `nvmlDeviceGetNumGpuCores` returns CUDA cores (7424), not SMs (58); and NVML's `used` memory includes driver-reserved memory (493,748,224 B where `nvidia-smi` shows 0 MiB) |
 
+## 1b. Why the test count differs between machines
+
+The same suite is collected everywhere; **seven tests skip on a machine that has a
+working CUDA GPU**, because each asserts what happens when CUDA is *absent* or when the
+installed ONNX Runtime has no usable CUDA EP. Those conditions cannot be true on the L4,
+so the tests would otherwise assert something the machine cannot produce.
+
+| Run | Collected | Passed | Skipped |
+|---|---|---|---|
+| Phase 4, CPU dev box (2026-09-19) | 423 | 423 | 0 |
+| Phase 5A, NVIDIA L4 (2026-09-20, commit `ded3dea`) | 423 | 416 | **7** |
+| After this cleanup, CPU dev box | 438 | 438 | 0 |
+| After this cleanup, NVIDIA L4 | 438 | 431 | **7** |
+
+No test was deleted, disabled or weakened: 416 + 7 = 423 and 431 + 7 = 438. The growth
+from 423 to 438 is 3 tests for `preload_cuda_libraries` and 12 for input identity.
+
+| Skipped on a CUDA machine | Asserts | Replaced on hardware by |
+|---|---|---|
+| `test_cli.py` — GPU-absent CLI verdict | `gpu-bench hardware` reports no GPU and exits non-zero | The GPU-present branch of the same test, which runs instead |
+| `test_pytorch_cli.py`, `test_pytorch_backend.py` (×3) — no-CUDA paths | A `cuda:0` request becomes `unavailable` in `validate` with zero samples and no CPU fallback | Runbook check **N1** on the L4: with `CUDA_VISIBLE_DEVICES=""` every stored run is `unavailable`/`failed` with zero samples |
+| `test_onnx.py`, `test_onnx_cli.py` (×2) — CPU-only ORT package | A CUDA request against a CPU-only wheel is refused before anything runs | Same **N1** check for the ORT backend, plus the availability pre-check which still runs |
+| `test_onnx.py` — REAL-FALLBACK substitution | ORT silently builds a CPU session when it cannot provide the CUDA EP, and the backend refuses at `build` | Inapplicable where the EP genuinely loads (nothing is substituted). Positive coverage: runbook **O1/O3/O4** prove the session really executes on the CUDA EP, and the skip condition itself is decided by creating a session and asking it |
+
+Both environments are exercised in CI: the GitHub runners are CPU-only, so they run all
+438 with zero skips, while the GPU-specific behaviour is evidenced by the runbook checks
+in `results/published/2026-09-20-phase5a-l4/`. A reviewer who sees a skip should read its
+reason string — each one names the environment assumption it depends on.
+
 ## 2. What has NOT been executed on real NVIDIA hardware (category C)
 
 Implemented and structurally tested; **unverified**. The procedure and pre-registered
@@ -72,7 +101,7 @@ did **not** cover.
 | ~~PyTorch CUDA validation~~ | **Validated on an L4 — see §1** | Index selection beyond device 0 |
 | ~~**`CudaEventTimer`**~~ | **Validated on an L4 — see §1** | Behaviour with multiple streams or CUDA graphs |
 | CUDA FP16 / BF16 execution | Not executed | Which kernels run, and whether tensor cores are selected. **TF32 was executed and measured** (§1): it changes results by 11.8–14.7× the FP32 tolerance, so `"ieee"` and `use_tf32=0` demonstrably differ from TF32 mode |
-| `cudnn.benchmark` autotuning | Executed on an L4, ResNet-50 batch 1, 3 repeats each: **on** → medians 5.488–5.571 ms with `prepare_inputs_ms` 585–595 ms; **off** → medians 5.616–5.646 ms with `prepare_inputs_ms` 363–371 ms. Autotuning costs ≈220 ms once and buys ≈1.5–2.5% steady-state latency (ranges disjoint) | Its effect at other batch sizes and shapes. It runs in the untimed sanity pass, **not** during warmup as `PyTorchOptions.cudnn_benchmark`'s description claims |
+| `cudnn.benchmark` autotuning | Executed on an L4, ResNet-50 batch 1, 3 repeats each: **on** → medians 5.488–5.571 ms with `prepare_inputs_ms` 585–595 ms; **off** → medians 5.616–5.646 ms with `prepare_inputs_ms` 363–371 ms. Autotuning costs ≈220 ms once and buys ≈1.5–2.5% steady-state latency (ranges disjoint) | Its effect at other batch sizes and shapes. It runs in the untimed sanity pass, **not** during warmup — `PyTorchOptions.cudnn_benchmark` and methodology §7 now say so, having claimed otherwise before this was measured |
 | `torch.cuda.synchronize`, `empty_cache` calls | Not executed (the only unexercised lines in the backend apart from the legacy-TF32 branch) | — |
 | GPU memory, OOM on a real device | torch OOM mapping tested with a raised `torch.OutOfMemoryError` | Real OOM behaviour and recovery |
 | Legacy `allow_tf32` branch (torch < 2.9) | **Not tested at all** — the installed torch has the new API | Whether the fallback works |
@@ -115,21 +144,34 @@ exists so the gap can be quantified rather than assumed.
 
 - **They are real** and stamped `device_kind: cuda`. They measure one NVIDIA L4 on a
   `g2-standard-4` instance, for ResNet-50 FP32 at batch 1 and 8 only.
-- **The 72 W power cap binds in three of four cells.** The driver flagged `SwPowerCap`
-  on essentially every busy sample for ORT batch 1 (SM clock 1665–1755 MHz), ORT batch 8
-  and PyTorch batch 8 (~1230–1260 MHz). PyTorch batch 1 never reached the cap (57–65 W)
-  and held 2040 MHz. The backends are therefore not running at equal clocks, and the
-  cell where one is capped and the other is not is the cell with the largest gap.
+- **Power and clock telemetry.**
+  *Measured:* the driver reported `SwPowerCap` on essentially every busy sample in
+  three cells — ORT batch 1 (power median ≈71–72 W, SM clock 1665–1755 MHz), ORT batch 8
+  and PyTorch batch 8 (~1230–1260 MHz). In PyTorch batch 1 no sample carried that flag
+  (57–65 W) and the SM clock stayed at 2040 MHz.
+  *Observed association:* the cells reporting the cap also ran at lower SM clocks than
+  the cell that did not.
+  *Interpretation (not established by this run):* the four cells therefore did not
+  execute at identical clocks, so an unknown part of any latency difference may reflect
+  clock differences rather than the runtimes themselves. **No causal direction was
+  tested** — this run cannot say whether a backend's throughput drives the cap or the
+  cap constrains the backend. Deciding that needs a controlled experiment, such as
+  locked clocks or a swept power limit, which Phase 5A did not perform.
 - **The GPU warmed from 55 °C to 80 °C across the session** and later repeats are
   slightly slower (ORT batch 1: 3.134 → 3.294 ms). Alternating the backend order spreads
   this across both rather than removing it. No thermal-slowdown flag was ever raised.
-- **Warmup adequacy is backend-specific.** PyTorch's first 10 iterations are within
-  0.6–2.0% of steady state; ORT's first 10 are 7.1–8.6% *faster*, because it starts at
-  the boost clock and is then power-capped down. The 10-iteration default is not safe
-  for ORT on this GPU; the controlled runs used 100.
-- **Input generators still differ between backends** (`torch.randn` vs numpy PCG64):
-  same shape, dtype and distribution, different values. Not expected to matter for a
-  dense CNN, but uncontrolled and not yet fixed.
+- **Warmup adequacy is backend-specific.** *Measured:* PyTorch's first 10 iterations
+  are within 0.6–2.0% of steady state, while ORT's first 10 are 7.1–8.6% *faster* than
+  its own steady state. *Associated telemetry:* ORT's SM clock starts at the 2040 MHz
+  boost and falls to 1665–1755 MHz as `SwPowerCap` appears. *Interpretation:* the early
+  fast iterations are consistent with running at boost clocks before the cap engages;
+  this was observed, not isolated by experiment. Either way the 10-iteration default is
+  not safe for ORT on this GPU; the controlled runs used 100.
+- **Input generators differed when these runs were made** (`torch.randn` vs numpy
+  PCG64): same shape, dtype and distribution, different values. Fixed on 2026-09-20 —
+  every executing backend now takes the canonical array from `core.inputs`, enforced by
+  `tests/unit/test_input_identity.py`, and each result records `input_generator`. The
+  published Phase 5A runs predate the fix and must not be pooled with later ones.
 - **Peak VRAM is not measured in-process.** `telemetry/` holds 100 ms `nvidia-smi`
   samples that also cover load and export phases, so they are not a peak for the
   measured loop. In-process peak memory is Phase 6 work.
@@ -170,8 +212,9 @@ path. Reduced-precision (FP16/INT8) ONNX artifacts are out of Phase 4 scope. See
 - **Cross-backend comparison is possible on the GPU under stated conditions, and still
   not on CPU.** The Phase 5A runs are interleaved, repeated five times, use host-side
   time for both backends and report their spread; their ranges are disjoint in both
-  cells. They remain qualified by §3b (power cap, warming, input generators). No CPU
-  result may be compared with any GPU result.
+  cells. They remain qualified by §3b (power cap, warming, and the input-generator
+  mismatch that applied to those runs). No CPU result may be compared with any GPU
+  result.
 - ~~The FP16 negative control is a proxy for TF32, not a TF32 measurement.~~ **TF32 has
   now been measured** on the L4: 11.8–14.7× the tolerance, confirming the proxy's
   premise — though top-1 agreement stayed 100%, so top-1 alone detects neither.

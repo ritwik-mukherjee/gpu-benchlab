@@ -500,12 +500,14 @@ The 20-run controlled benchmark produced the project's first GPU latency numbers
 
 ### Findings that change how results must be read
 
-- **The L4's 72 W cap binds.** ORT at batch 1 runs power-capped at 1665–1755 MHz while
-  PyTorch at batch 1 never reaches the cap and holds 2040 MHz. The driver flagged
-  `SwPowerCap` on essentially every busy sample in three of four cells.
+- **The L4's 72 W cap binds in three of four cells.** Measured: `SwPowerCap` on
+  essentially every busy sample for ORT batch 1 (1665–1755 MHz), ORT batch 8 and PyTorch
+  batch 8; no such flag for PyTorch batch 1, which held 2040 MHz at 57–65 W. The cells
+  therefore did not run at identical clocks. No causal direction was tested.
 - **Warmup adequacy is backend-specific.** PyTorch's first 10 iterations sit within
-  0.6–2.0% of steady state; ORT's first 10 are 7.1–8.6% *faster*, as it starts at the
-  boost clock and is then capped down. The 10-iteration default is unsafe for ORT here.
+  0.6–2.0% of steady state; ORT's first 10 are 7.1–8.6% *faster* than its own steady
+  state, while its SM clock falls from 2040 MHz as `SwPowerCap` appears — an association,
+  not an isolated cause. The 10-iteration default is unsafe for ORT here.
 - **cuDNN autotuning happens in the untimed sanity pass, not during warmup** as
   `PyTorchOptions.cudnn_benchmark`'s description claims: `prepare_inputs_ms` rises
   363–371 → 585–595 ms with it on, buying ≈1.5–2.5% steady-state latency.
@@ -519,10 +521,72 @@ The 20-run controlled benchmark produced the project's first GPU latency numbers
   ±2% block-median statistic proved jitter-dominated and returned `None` for some runs.
   The deviation and the decision to keep `warmup_iterations = 100` were written to
   `NOTES.md` **before** the controlled runs. No config was edited after seeing data.
-- The input-generator mismatch between backends is still not fixed, so it qualifies the
-  comparison rather than being eliminated.
+- The input-generator mismatch between backends was still present during these runs, so
+  it qualifies the comparison rather than being eliminated. It was fixed immediately
+  afterwards (see the 2026-09-20 cleanup entry below).
 
 ### Next
 
 TensorRT is still untouched, as is the LLM path: `gpu-bench models list` has only
 ResNet-50, so no Qwen3 metric (TTFT, inter-token latency, tokens/sec) can exist yet.
+
+---
+
+## 2026-09-20 — Phase 5A cleanup: controlled inputs, honest wording, test-count audit
+
+A focused pass before TensorRT. No architectural change, no new features.
+
+### Input identity (the last uncontrolled difference in the comparison)
+
+Audited both benchmark paths. Differences found: PyTorch drew `torch.randn` from a
+seeded `torch.Generator`, ORT drew `numpy.default_rng(seed).standard_normal`. Same
+shape, dtype and distribution; different values. Seed source, shape, and the absence of
+preprocessing already matched.
+
+Fix: `PyTorchBackend.prepare()` now uses `core.inputs.synthetic_input`, the same
+canonical array ORT and the correctness check already used, so one definition serves
+every backend. Casting to the requested precision, device placement and memory format
+remain backend-side conversions of those values and are asserted as such.
+
+`tests/unit/test_input_identity.py` (12 tests) iterates `EXECUTING_BACKENDS`, drives each
+backend's real lifecycle to `prepare()` and compares bit patterns against
+`synthetic_input`, across three (batch, seed) cases. Reverting the backend to
+`torch.randn` makes 7 of them fail, so the test has power. A backend added later is
+covered without editing the test; one that prepares an unreadable input fails rather
+than silently skipping.
+
+**Published Phase 5A numbers predate this fix** and are marked accordingly. They are not
+invalidated — the mismatch is not expected to affect latency for a dense CNN — but they
+must not be pooled with later runs.
+
+### Wording: correlation vs causation
+
+Rewrote the power-cap passages in `limitations.md` §3b, the evidence README and this log.
+Previously: "ORT at batch 1 is power-limited precisely because it completes more work per
+second." That is an untested causal claim. Now split into *measured* (`SwPowerCap` flags,
+clocks, watts), *observed association* (capped cells ran at lower clocks) and
+*interpretation* (clocks were not equal across cells; no causal direction was tested, and
+testing it needs locked clocks or a swept power limit). Same treatment for the warmup
+explanation.
+
+### cuDNN autotune
+
+`PyTorchOptions.cudnn_benchmark` claimed autotuning happens during warmup. Measured on
+the L4: it happens at the first forward pass of a shape, which is the untimed sanity pass
+in `prepare()` — `prepare_inputs_ms` 363–371 → 585–595 ms, steady-state median
+5.616–5.646 → 5.488–5.571 ms. Docstring, methodology §7 and limitations now say so.
+
+### Test-count audit
+
+416/7 on the L4 versus 423/0 on the CPU box was not tests going missing: the same 423
+were collected and 7 skip on any machine with a working CUDA GPU, because each asserts
+what happens when CUDA is *absent*. `limitations.md` §1b now lists all seven, what each
+asserts, and which hardware check covers the same behaviour on the L4.
+
+### Evidence hygiene
+
+Raw evidence stays byte-for-byte as written. `analysis/sanitize_evidence.py` produces a
+redacted *copy* elsewhere (hostname, GPU UUID and serial, home paths, plus `--replace`
+literals), then verifies nothing redacted survives. IPv4-shaped strings are reported, not
+rewritten, because `libcublas.so.13.8.0.4` and `cuDNN 9.24.0.43` parse as addresses. A
+scan of 426 text files found no credentials, tokens, keys or external IPs.
