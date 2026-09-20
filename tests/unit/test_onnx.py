@@ -111,6 +111,25 @@ def environment():
     return detect_environment(include_frameworks=False)
 
 
+@pytest.fixture(scope="module")
+def cuda_ep_active(cache: Path) -> bool:
+    """Whether a session here really runs on the CUDA EP.
+
+    Being listed proves nothing (Phase 4: ORT lists the EP and then silently builds a
+    CPU session), so this creates a real session and asks it. On a GPU machine this is
+    True, which makes the REAL-FALLBACK substitution test inapplicable: there is
+    nothing to substitute.
+    """
+    if CUDA_EP not in ort.get_available_providers():
+        return False
+    artifact, _ = artifact_paths(ExportConfig(model=TINY), directory=cache / "onnx")
+    try:
+        session = ort.InferenceSession(str(artifact), providers=[CUDA_EP])
+    except Exception:  # noqa: BLE001 - any failure means the EP is not usable here
+        return False
+    return CUDA_EP in session.get_providers()
+
+
 @pytest.fixture
 def engine(environment) -> BenchmarkEngine:
     return BenchmarkEngine(environment=environment)
@@ -411,7 +430,11 @@ class TestNoSilentCudaFallback:
         assert r.raw_samples.latency_ms == [] and r.timing_mechanism is None
 
     def test_real_ort_silent_substitution_is_caught_at_build(
-        self, engine: BenchmarkEngine, cache: Path, monkeypatch: pytest.MonkeyPatch
+        self,
+        engine: BenchmarkEngine,
+        cache: Path,
+        cuda_ep_active: bool,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """REAL-FALLBACK: only the availability list is patched.
 
@@ -420,6 +443,8 @@ class TestNoSilentCudaFallback:
         CPU package and onnxruntime-gpu 1.30 without CUDA libraries). The backend must
         refuse at build, not benchmark the CPU.
         """
+        if cuda_ep_active:
+            pytest.skip("the CUDA EP really loads here, so ORT substitutes nothing")
         monkeypatch.setenv("GPU_BENCHLAB_CACHE", str(cache))
         real = ort.get_available_providers()
         monkeypatch.setattr(ort, "get_available_providers", lambda: [CUDA_EP, *real])
