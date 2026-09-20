@@ -3,7 +3,7 @@
 This document exists so that no reader has to guess what has actually been verified.
 It is updated whenever something is implemented but not executed on real hardware.
 
-Last updated: 2026-09-20 (Phase 5A: first validation on NVIDIA hardware).
+Last updated: 2026-09-20 (Phase 5B: controlled PyTorch vs ONNX Runtime rerun).
 
 ---
 
@@ -17,7 +17,7 @@ blurred.
 | **A** | **Real CPU measurements** | Yes | PyTorch and ONNX Runtime (CPU EP) ResNet-50 on the development laptop's CPU, plus the PyTorch-vs-ORT correctness reports. Evidence: `results/published/2026-09-18-phase3-cpu-resnet50/`, `results/published/2026-09-19-phase4-onnx/`. Stamped `device_kind: cpu`, stored under `cpu-` prefixes, carry a CPU note. **Not GPU performance.** |
 | **B** | **Simulated measurements** | Yes | The `fake` backend. Stamped `is_simulated: true`, `timing_mechanism: scripted`, `sim-` prefixes. **Not measurements of anything.** |
 | **C** | **CUDA functionality: implemented, only fake/structurally tested** | Yes | What remains in §2: multi-GPU enumeration, OOM handling, FP16/BF16 execution, the legacy TF32 branch, TensorRT and the LLM path. Tested against patched CUDA queries and fake APIs. |
-| **D** | **NVIDIA hardware measurements** | **Yes, since 2026-09-20** | One NVIDIA L4 (g2-standard-4, driver 580.159.04, CUDA 13.0, torch 2.14.0+cu130, onnxruntime-gpu 1.30.0). ResNet-50 FP32 at batch 1 and 8, 20 controlled runs plus 9 warmup-trajectory runs, with NVML telemetry and full provenance. Evidence: `results/published/2026-09-20-phase5a-l4/`. Stamped `device_kind: cuda`. **This is one GPU, one model, two batch sizes, FP32 only.** |
+| **D** | **NVIDIA hardware measurements** | **Yes, since 2026-09-20** | One NVIDIA L4 (g2-standard-4, driver 580.159.04, CUDA 13.0, torch 2.14.0+cu130, onnxruntime-gpu 1.30.0), ResNet-50 FP32 at batch 1 and 8, with NVML telemetry and full provenance; stamped `device_kind: cuda`. Two matrices exist: **Phase 5B** (`2026-09-20-phase5b-l4-controlled-inputs/`) is the one to cite — both backends provably received byte-identical inputs. **Phase 5A** (`2026-09-20-phase5a-l4/`) predates that fix and keeps its caveat; it also holds the validation evidence (NVML, CUDA events, correctness, ORT CUDA EP). **This is one GPU, one model, two batch sizes, FP32 only.** |
 
 The development machine (Intel Core i7-8565U, Intel UHD 620 only) has **no NVIDIA GPU**;
 GPU work runs on a cloud L4 instance.
@@ -56,6 +56,7 @@ GPU work runs on a cloud L4 instance.
 | **ORT's end-of-`Run` stream synchronization** | Adding a device-wide sync after `run_with_iobinding` changed the median by +0.58% (12.20 → 12.27 ms). **Control:** with `disable_synchronize_execution_providers=1` the call returned in 13.6% of that time, so the check could have detected a missing sync |
 | **GPU correctness, CPU vs CUDA and PyTorch vs ORT** | 9/9 in each comparison under the unchanged Phase 4 tolerance (max \|Δ\| 4.65e-6 CPU-vs-CUDA, 4.83e-4 PyTorch-vs-ORT), top-1/top-5 100%, FP16 control rejected. **TF32 measured:** 11.8–14.7× the tolerance while top-1 stayed 100%, so the tolerance detects TF32 and top-1 alone does not |
 | **First GPU benchmark, ResNet-50 FP32 on an L4** | 20 controlled runs (2 backends × batch 1 and 8 × 5 repeats, alternating order), all `ok`, no anomalies, run-to-run spread 1.66–4.90%, with 100 ms NVML telemetry. Evidence: `results/published/2026-09-20-phase5a-l4/` |
+| **Controlled rerun under unified inputs (Phase 5B)** | The same matrix at commit `a02c94f`, with both backends' device inputs proven byte-identical on the GPU beforehand. 20/20 `ok`, no anomalies, drift ≤1.53%, zero containment violations. Medians moved by −1.22% to +0.27% versus Phase 5A — smaller than each cell's spread — and the backend ordering and its reversal with batch size were unchanged. **One cell missed the stability gate: PyTorch batch 1 at 5.87% spread**, with clocks pinned at 2040 MHz and no power-cap flag, so the cause is unestablished. Evidence: `results/published/2026-09-20-phase5b-l4-controlled-inputs/` |
 | **NVML success path on a real GPU** | Executed on an NVIDIA L4 (2026-09-20): detection OK, and 19 fields compared with `nvidia-smi` taken either side of the reading. All static fields matched exactly (name, UUID, PCI bus ID, serial, capability 8.9, total memory, 72 W limit, max clocks, persistence, compute mode); dynamic fields fell inside the bracket. Two findings, both now documented: `nvmlDeviceGetNumGpuCores` returns CUDA cores (7424), not SMs (58); and NVML's `used` memory includes driver-reserved memory (493,748,224 B where `nvidia-smi` shows 0 MiB) |
 
 ## 1b. Why the test count differs between machines
@@ -172,6 +173,13 @@ exists so the gap can be quantified rather than assumed.
   every executing backend now takes the canonical array from `core.inputs`, enforced by
   `tests/unit/test_input_identity.py`, and each result records `input_generator`. The
   published Phase 5A runs predate the fix and must not be pooled with later ones.
+- **The headline comparison is Phase 5B, not 5A.** Phase 5B reran the same matrix with
+  the input path unified and proved on the GPU that both backends received byte-identical
+  tensors. Its medians differ from 5A by −1.22% to +0.27%, inside each cell's run-to-run
+  spread, and the ordering (ORT faster at batch 1, PyTorch at batch 8, ranges disjoint)
+  is unchanged. **PyTorch batch 1 missed the ≤5% spread gate in 5B (5.87%)** while its
+  clock stayed at 2040 MHz with no power-cap flag, so that instability is unexplained and
+  the batch-1 ratio should be read as a range, not a point.
 - **Peak VRAM is not measured in-process.** `telemetry/` holds 100 ms `nvidia-smi`
   samples that also cover load and export phases, so they are not a peak for the
   measured loop. In-process peak memory is Phase 6 work.

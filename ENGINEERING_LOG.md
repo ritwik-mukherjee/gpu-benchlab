@@ -590,3 +590,49 @@ redacted *copy* elsewhere (hostname, GPU UUID and serial, home paths, plus `--re
 literals), then verifies nothing redacted survives. IPv4-shaped strings are reported, not
 rewritten, because `libcublas.so.13.8.0.4` and `cuDNN 9.24.0.43` parse as addresses. A
 scan of 426 text files found no credentials, tokens, keys or external IPs.
+
+---
+
+## 2026-09-20 — Phase 5B: controlled rerun under unified inputs
+
+Reran the Phase 5A matrix with exactly one deliberate change: both backends now take the
+canonical input. Configs, iteration counts, timing boundary, telemetry method and the
+alternating run order are untouched. Evidence:
+`results/published/2026-09-20-phase5b-l4-controlled-inputs/` (Phase 5A's tree is
+unmodified).
+
+Before measuring, proved on the GPU that PyTorch's device tensor and ORT's
+device-resident OrtValue are byte-identical to `core.inputs.synthetic_input` and to each
+other, at batch 1 and 8. Reading ORT's bound input needed one non-behavioural change:
+IOBinding exposes bound outputs but not bound inputs, so `prepare()` now keeps the
+OrtValue it binds and `close()` releases it.
+
+### Results (host-side series, median of 5 runs per cell)
+
+| Cell | 5B | 5A | Δ | 5B spread |
+|---|---|---|---|---|
+| PyTorch b1 | 5.650 ms | 5.655 ms | −0.09% | 5.87% |
+| ORT b1 | 3.246 ms | 3.260 ms | −0.44% | 4.75% |
+| PyTorch b8 | 11.719 ms | 11.864 ms | −1.22% | 3.58% |
+| ORT b8 | 12.676 ms | 12.641 ms | +0.27% | 2.93% |
+
+Every shift is smaller than the cell's own spread. Backend ordering reproduced with
+disjoint ranges: ORT faster at batch 1 (1.741x, was 1.735x), PyTorch faster at batch 8
+(1.082x, was 1.065x). So unifying the inputs did not move the medians beyond noise —
+which is what was expected for a dense CNN, but is now measured rather than assumed.
+
+### The one gate failure, reported not hidden
+
+PyTorch batch 1 spread 5.87%, above the pre-registered 5% limit. Telemetry excludes the
+obvious causes: SM clock 2040 MHz in every sample of every run, no `SwPowerCap` flag,
+58.7-64.3 W against a 72 W limit, and the per-run medians are not monotonic in
+temperature. Cause unestablished; an untested hypothesis (host-launch-bound at batch 1 on
+a 4 vCPU instance also running the sampler) is recorded in the evidence NOTES.md along
+with what would actually test it. The same cell was the least stable in 5A (4.29%).
+
+### Verification before publishing
+
+Input identity on GPU; ORT on the CUDA EP with 122/122 nodes, IOBinding, sync experiment
+and its control, and the no-fallback test; PyTorch containment violations zero across all
+10 runs; no anomalies and no discarded runs; 5A evidence untouched; sanitizer dry run
+clean (161 redactions, nothing surviving); 215 files scanned for secrets, none found.

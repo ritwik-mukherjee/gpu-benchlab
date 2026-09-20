@@ -6,6 +6,27 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added — Phase 5B: controlled PyTorch vs ONNX Runtime comparison (NVIDIA L4)
+
+- **The Phase 5A matrix rerun with the input path unified**, and nothing else changed:
+  same configs, iteration counts, timing boundary, telemetry method and alternating run
+  order. Evidence: `results/published/2026-09-20-phase5b-l4-controlled-inputs/`; Phase 5A's
+  tree is untouched and keeps its caveat.
+- **Input identity proven on the GPU before measuring:** PyTorch's device tensor and ORT's
+  device-resident `OrtValue` are byte-identical to `core.inputs.synthetic_input` and to
+  each other, at batch 1 and 8, with `input_generator` / `input_seed` recorded.
+- **Results** (host-side series, median of 5 runs): PyTorch 5.650 ms / ORT 3.246 ms at
+  batch 1; PyTorch 11.719 ms / ORT 12.676 ms at batch 8. Ranges are disjoint in both
+  cells, and the ordering reverses with batch size — ORT 1.741× faster at batch 1,
+  PyTorch 1.082× faster at batch 8. Versus Phase 5A every median moved by −1.22% to
+  +0.27%, inside each cell's own run-to-run spread.
+- **One cell missed the pre-registered stability gate and is published as measured:**
+  PyTorch batch 1 at 5.87% spread (limit 5%), with the SM clock pinned at 2040 MHz and no
+  power-cap flag, so the cause is unestablished rather than explained away.
+- `analysis/gpu_validation/input_identity_gpu.py` collects the GPU-side identity evidence;
+  the ORT backend retains the `OrtValue` it binds so a bound input can be read back
+  (IOBinding exposes only bound outputs). Execution is unchanged.
+
 ### Changed — Phase 5A cleanup (methodology and evidence)
 
 - **One input generator for every backend.** `PyTorchBackend` drew benchmark inputs from

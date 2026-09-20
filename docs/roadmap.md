@@ -12,6 +12,7 @@ exists — it is done when it has been executed and its output verified.
 | **3** | PyTorch backend: model load, CUDA inference, result persistence | **Complete** — CPU and CUDA paths both executed on real hardware; CUDA-event timing validated on an L4 |
 | **4** | ONNX Runtime backend: CUDA EP, explicit provider recording | **Complete** — export reproducible; CPU EP and CUDA EP both executed and verified against PyTorch on real hardware |
 | **5A** | First NVIDIA hardware validation (NVML, CUDA events, correctness, ORT CUDA EP, telemetry, controlled benchmark) | **Complete** — NVIDIA L4, 2026-09-20; evidence in `results/published/2026-09-20-phase5a-l4/` |
+| **5B** | Controlled PyTorch vs ONNX Runtime rerun under unified inputs | **Complete** — NVIDIA L4, 2026-09-20; evidence in `results/published/2026-09-20-phase5b-l4-controlled-inputs/` |
 | 5B | TensorRT backend: ONNX→engine build, serialization, inference | Proposed next (awaiting approval) |
 | 6 | GPU telemetry: sampled utilisation, VRAM, power, temperature | Planned |
 | 7 | Experiment runner: YAML configs, batch/precision matrices | Planned |
