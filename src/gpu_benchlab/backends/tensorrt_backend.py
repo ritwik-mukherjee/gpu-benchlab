@@ -47,6 +47,7 @@ from gpu_benchlab.core.errors import (
 )
 from gpu_benchlab.core.inputs import INPUT_GENERATOR, synthetic_input
 from gpu_benchlab.core.timing import NANOSECONDS_PER_MILLISECOND, Timer, TimingMechanism
+from gpu_benchlab.export.onnx_export import ExportConfig, ensure_artifact
 from gpu_benchlab.export.tensorrt_build import (
     TensorRtManifest,
     TrtBuildConfig,
@@ -166,6 +167,7 @@ class TensorRtBackend(Backend):
 
         self._trt: Any = None
         self._cudart: Any = None
+        self._artifact: Any = None
         self._engine_path: Any = None
         self._manifest: TensorRtManifest | None = None
         self._runtime: Any = None
@@ -281,27 +283,37 @@ class TensorRtBackend(Backend):
     # -- lifecycle ---------------------------------------------------------------------
 
     def load(self) -> None:
-        """Obtain the engine: the ONNX artifact is fetched and verified here."""
+        """Fetch and verify the canonical ONNX artifact. No engine work happens here."""
+        artifact, onnx_manifest, _ = ensure_artifact(
+            ExportConfig(model=self._spec.name, weights=self._weights_id),
+            allow_export=self._options.allow_export,
+            allow_download=self._options.allow_download,
+        )
+        self._artifact = artifact
+        self._settings["source_onnx_sha256"] = onnx_manifest.artifact.sha256
+        self._settings["weights_sha256"] = onnx_manifest.model.weights_sha256
+
+    def build(self) -> None:
+        """Build (or reuse) the engine and deserialize it. TensorRT's engine build is
+        this lifecycle phase by definition, and is never inference."""
+        if self._artifact is None:
+            raise BackendError("build() called before load().")
         path, manifest, built = ensure_engine(
             self._build_config,
             allow_build=self._options.allow_build,
-            allow_export=self._options.allow_export,
-            allow_download=self._options.allow_download,
+            allow_export=False,  # load() already ensured the artifact
+            allow_download=False,
             device_index=self._device_id,
         )
         self._engine_path, self._manifest = path, manifest
         self._settings["engine_built_this_run"] = built
+        self._settings["engine_file"] = path.name
         self._settings["engine_sha256"] = manifest.engine_sha256
         self._settings["engine_size_bytes"] = manifest.engine_size_bytes
         self._settings["engine_build_seconds"] = round(manifest.build_seconds, 3)
-        self._settings["source_onnx_sha256"] = manifest.source_onnx_sha256
         for key, value in manifest.builder_settings.items():
             self._settings[f"builder.{key}"] = value
 
-    def build(self) -> None:
-        """Deserialize the engine. This is TensorRT's engine-load step, never inference."""
-        if self._manifest is None or self._engine_path is None:
-            raise BackendError("build() called before load().")
         started = time.perf_counter_ns()
         self._runtime = self._trt.Runtime(self._trt.Logger(self._trt.Logger.WARNING))
         self._engine = self._runtime.deserialize_cuda_engine(self._engine_path.read_bytes())

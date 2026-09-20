@@ -614,6 +614,11 @@ def staged_engine(fake: FakeTrt, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     )
     from gpu_benchlab.backends import tensorrt_backend
 
+    # load() fetches the canonical artifact and build() makes the engine: both are
+    # stubbed so these tests touch neither torch, the weights cache nor a GPU.
+    monkeypatch.setattr(
+        tensorrt_backend, "ensure_artifact", lambda *a, **k: (artifact, onnx, False)
+    )
     monkeypatch.setattr(tensorrt_backend, "ensure_engine", lambda *a, **k: (path, manifest, False))
     return manifest
 
@@ -772,3 +777,95 @@ class TestBackendLifecycle:
         assert result.status is BenchmarkStatus.FAILED
         assert result.errors[0].phase == "prepare"
         assert "non-finite" in result.errors[0].message
+
+
+class TestEnginePathsAreDistinct:
+    """Regression: engines that differ must not share a filename."""
+
+    def test_the_version_dots_do_not_truncate_the_filename(self, tmp_path: Path) -> None:
+        """Path.with_suffix() ate everything after the last dot of the TensorRT version.
+
+        "...-trt11.3.0.99-sm89-b1_8_8-ieee_fp32" collapsed to "...-trt11.3.0.plan",
+        dropping the architecture, profile and precision from the name, so the FP32 and
+        TF32 engines overwrote each other.
+        """
+        config = TrtBuildConfig(model="resnet50", weights="IMAGENET1K_V2")
+        plan, manifest = tensorrt_build.engine_paths(
+            config, "resnet50-canonical", "11.3.0.99", "8.9", tmp_path
+        )
+        assert plan.name == "resnet50-canonical-trt11.3.0.99-sm89-b1_8_8-ieee_fp32.plan"
+        assert manifest.name == (
+            "resnet50-canonical-trt11.3.0.99-sm89-b1_8_8-ieee_fp32.manifest.json"
+        )
+
+    @pytest.mark.parametrize(
+        ("first", "second"),
+        [
+            ({"precision": "ieee_fp32"}, {"precision": "tf32"}),
+            ({"opt_batch": 1}, {"opt_batch": 8}),
+            ({"max_batch": 8}, {"max_batch": 16}),
+        ],
+    )
+    def test_engines_that_differ_get_different_files(
+        self, first: dict[str, Any], second: dict[str, Any], tmp_path: Path
+    ) -> None:
+        base = {"model": "resnet50", "weights": "IMAGENET1K_V2", "min_batch": 1, "max_batch": 8}
+        a, _ = tensorrt_build.engine_paths(
+            TrtBuildConfig(**{**base, **first}), "stem", "11.3.0.99", "8.9", tmp_path
+        )
+        b, _ = tensorrt_build.engine_paths(
+            TrtBuildConfig(**{**base, **second}), "stem", "11.3.0.99", "8.9", tmp_path
+        )
+        assert a != b, "different engines would overwrite each other"
+
+    def test_different_architectures_get_different_files(self, tmp_path: Path) -> None:
+        config = TrtBuildConfig(model="resnet50", weights="IMAGENET1K_V2")
+        ada, _ = tensorrt_build.engine_paths(config, "stem", "11.3.0.99", "8.9", tmp_path)
+        hopper, _ = tensorrt_build.engine_paths(config, "stem", "11.3.0.99", "9.0", tmp_path)
+        assert ada != hopper
+
+
+class TestPhaseAttribution:
+    """The engine build belongs to the build phase, not to model load."""
+
+    def test_load_fetches_the_artifact_and_build_makes_the_engine(
+        self,
+        fake: FakeTrt,
+        staged_engine: Any,
+        environment,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from gpu_benchlab.backends import tensorrt_backend
+        from gpu_benchlab.backends.tensorrt_backend import TensorRtBackend
+
+        stub_dir = tmp_path / "phase-attribution"
+        stub_dir.mkdir(parents=True, exist_ok=True)
+        artifact, onnx = onnx_manifest_stub(stub_dir)
+        calls: list[str] = []
+        staged = tensorrt_backend.ensure_engine
+
+        def record_artifact(*args: Any, **kwargs: Any) -> Any:
+            calls.append("ensure_artifact")
+            return artifact, onnx, False
+
+        def record_engine(*args: Any, **kwargs: Any) -> Any:
+            calls.append("ensure_engine")
+            return staged(*args, **kwargs)
+
+        monkeypatch.setattr(tensorrt_backend, "ensure_artifact", record_artifact)
+        monkeypatch.setattr(tensorrt_backend, "ensure_engine", record_engine)
+
+        config = cfg(batch=1)
+        backend = TensorRtBackend(config)
+        try:
+            backend.validate(config, environment)
+            backend.load()
+            assert calls == ["ensure_artifact"], "load() must not build or fetch an engine"
+            assert "engine_sha256" not in backend.descriptor.settings
+            backend.build()
+            assert calls == ["ensure_artifact", "ensure_engine"]
+            assert backend.descriptor.settings["engine_sha256"] == staged_engine.engine_sha256
+            assert backend.descriptor.settings["engine_deserialization_ms"] >= 0
+        finally:
+            backend.close()

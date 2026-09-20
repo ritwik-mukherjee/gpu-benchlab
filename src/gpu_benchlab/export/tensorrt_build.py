@@ -182,8 +182,13 @@ def engine_paths(
     directory: Path | None = None,
 ) -> tuple[Path, Path]:
     """``(engine.plan, engine.manifest.json)`` for this build configuration."""
-    base = (directory or default_engine_dir()) / config.stem(artifact_stem, trt_version, capability)
-    return base.with_suffix(".plan"), base.with_suffix(".manifest.json")
+    stem = config.stem(artifact_stem, trt_version, capability)
+    root = directory or default_engine_dir()
+    # Not Path.with_suffix(): the stem contains dots (the TensorRT version), and
+    # with_suffix() replaces everything after the last one -- which silently collapsed
+    # "...-trt11.3.0.99-sm89-b1_8_8-ieee_fp32" to "...-trt11.3.0.plan", so engines
+    # differing only in precision or profile shared a filename and overwrote each other.
+    return root / f"{stem}.plan", root / f"{stem}.manifest.json"
 
 
 def _gpu_identity(cudart: Any, device_index: int) -> tuple[str, str, int, int]:
