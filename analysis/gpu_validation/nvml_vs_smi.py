@@ -53,7 +53,7 @@ UNAVAILABLE = {"[n/a]", "n/a", "[not supported]", "not supported", "[unknown err
 
 
 def query() -> list[dict[str, str | None]] | None:
-    keys = ["index"] + [smi for _, smi, _, _ in FIELDS]
+    keys = ["index", "driver_version"] + [smi for _, smi, _, _ in FIELDS]
     text = nvidia_smi(f"--query-gpu={','.join(keys)}", "--format=csv,noheader,nounits")
     if text is None:
         return None
