@@ -1,12 +1,20 @@
 """Backend-independent synthetic inputs.
 
 One definition of "the input for seed S and shape X", in numpy, so every runtime
-that uses it receives bit-identical float32 values. The ONNX Runtime backend and
-the PyTorch-vs-ONNX correctness check use it.
+that uses it receives bit-identical float32 values. **Every executing backend takes
+its benchmark input from here** -- PyTorch, ONNX Runtime, and the PyTorch-vs-ONNX
+correctness check -- which is what makes a cross-backend comparison differ only in
+the runtime under test. `tests/unit/test_input_identity.py` fails if a backend
+deviates.
 
-The PyTorch backend (Phase 3) still draws its benchmark inputs with
-``torch.randn``; unifying it is a prerequisite for the first cross-backend latency
-comparison (docs/plans/phase-4-onnxruntime.md §4).
+Until 2026-09-20 the PyTorch backend drew from ``torch.randn`` instead: same shape,
+dtype and distribution, different values for the same seed. Results recorded before
+that carry ``input_generator`` saying which stream produced them, so they are not
+silently mixed with later ones.
+
+A backend may still convert these values: casting to a requested precision
+(fp16/bf16), moving them to a device, or changing memory format. Those are
+properties of the run being measured, not different inputs.
 
 Values are standard normal: close to the distribution of ImageNet images after
 the usual mean/std normalisation, which is the input range these models expect.

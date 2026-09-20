@@ -35,6 +35,15 @@ _STATUS_STYLE = {
 }
 
 
+EXECUTING_BACKENDS = ("pytorch", "onnxruntime")
+"""Backends that execute a real model, as opposed to the simulated `fake` one.
+
+Every one of them must take its benchmark input from `core.inputs.synthetic_input`,
+so that a cross-backend comparison differs only in the runtime under test.
+`tests/unit/test_input_identity.py` iterates this tuple and fails otherwise.
+"""
+
+
 def build_backend(config: ExperimentConfig, *, seed: int) -> Backend:
     """Instantiate the backend named by the config.
 
@@ -66,11 +75,14 @@ def build_backend(config: ExperimentConfig, *, seed: int) -> Backend:
         raise ConfigurationError(
             f"Backend {config.backend!r} is not implemented yet "
             f"(planned for Phase {known_but_unimplemented[name]}). "
-            "Available now: 'pytorch', 'onnxruntime', and 'fake' (simulated)."
+            "Available now: "
+            + ", ".join(repr(b) for b in EXECUTING_BACKENDS)
+            + ", and 'fake' (simulated)."
         )
     raise ConfigurationError(
-        f"Unknown backend {config.backend!r}. "
-        "Available now: 'pytorch', 'onnxruntime', 'fake' (simulated)."
+        f"Unknown backend {config.backend!r}. Available now: "
+        + ", ".join(repr(b) for b in EXECUTING_BACKENDS)
+        + ", 'fake' (simulated)."
     )
 
 

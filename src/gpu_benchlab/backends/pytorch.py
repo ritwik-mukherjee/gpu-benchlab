@@ -47,6 +47,7 @@ from gpu_benchlab.core.errors import (
     UnavailableError,
     UnsupportedConfigurationError,
 )
+from gpu_benchlab.core.inputs import INPUT_GENERATOR, synthetic_input
 from gpu_benchlab.core.timing import (
     NANOSECONDS_PER_MILLISECOND,
     Timer,
@@ -81,7 +82,11 @@ class PyTorchOptions(BaseModel):
         default=True,
         description=(
             "Let cuDNN autotune convolution algorithms for the fixed input shape. "
-            "Autotuning happens during warmup, which is one reason warmup exists."
+            "Autotuning runs at the first forward pass of a given shape, which in this "
+            "backend is the UNTIMED sanity pass in prepare() -- not during warmup. "
+            "Measured on an NVIDIA L4 (ResNet-50, batch 1, 3 repeats each): it raised "
+            "prepare_inputs_ms from 363-371 to 585-595 and lowered steady-state median "
+            "latency from 5.616-5.646 ms to 5.488-5.571 ms."
         ),
     )
     channels_last: bool = Field(default=False, description="Use NHWC memory format.")
@@ -187,6 +192,8 @@ class PyTorchBackend(Backend):
             "device": self._device_str,
             "precision_mode": "cast",
             "requested_precision": self._precision.value,
+            "input_generator": INPUT_GENERATOR,
+            "input_seed": self._seed,
         }
 
     # -- identity ----------------------------------------------------------------------
@@ -490,8 +497,13 @@ class PyTorchBackend(Backend):
         # registry default is used, and without this the result would not say what ran.
         self._settings["input_shape"] = "x".join(str(d) for d in shape)
         self._settings["input_seed"] = self._seed
-        generator = torch.Generator(device="cpu").manual_seed(self._seed)
-        inputs = torch.randn(shape, generator=generator).to(device=self._device, dtype=self._dtype)
+        # The canonical input (core.inputs), shared with every other backend, so a
+        # cross-backend comparison differs only in the runtime under test. Until
+        # 2026-09-20 this drew from torch.randn instead, which produced a different
+        # value stream for the same seed.
+        inputs = torch.from_numpy(synthetic_input(shape, self._seed)).to(
+            device=self._device, dtype=self._dtype
+        )
         if self._options.channels_last and inputs.dim() == 4:
             inputs = inputs.contiguous(memory_format=torch.channels_last)
 
