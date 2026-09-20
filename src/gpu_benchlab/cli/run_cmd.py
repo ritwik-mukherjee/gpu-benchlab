@@ -35,7 +35,7 @@ _STATUS_STYLE = {
 }
 
 
-EXECUTING_BACKENDS = ("pytorch", "onnxruntime")
+EXECUTING_BACKENDS = ("pytorch", "onnxruntime", "tensorrt")
 """Backends that execute a real model, as opposed to the simulated `fake` one.
 
 Every one of them must take its benchmark input from `core.inputs.synthetic_input`,
@@ -70,7 +70,12 @@ def build_backend(config: ExperimentConfig, *, seed: int) -> Backend:
 
         return OnnxRuntimeBackend(config)
 
-    known_but_unimplemented = {"tensorrt": 5, "tensorrt_llm": 10}
+    if name == "tensorrt":
+        from gpu_benchlab.backends.tensorrt_backend import TensorRtBackend
+
+        return TensorRtBackend(config)
+
+    known_but_unimplemented = {"tensorrt_llm": 10}
     if name in known_but_unimplemented:
         raise ConfigurationError(
             f"Backend {config.backend!r} is not implemented yet "

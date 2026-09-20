@@ -46,6 +46,14 @@ TINY = "tiny-input-identity"
 SHAPE = (3, 8, 8)
 CASES = [(1, 0), (3, 7), (8, 1)]  # (batch, seed)
 
+# Backends that can run on the CPU device, where a prepared input is directly readable.
+# Every other executing backend must *reject* the CPU device (asserted below), and its
+# input identity is proven on the GPU instead by
+# analysis/gpu_validation/input_identity_gpu.py. Adding a backend therefore forces a
+# decision here rather than silently dropping it from the check.
+CPU_CAPABLE = ("pytorch", "onnxruntime")
+CUDA_ONLY = tuple(b for b in EXECUTING_BACKENDS if b not in CPU_CAPABLE)
+
 
 class TinyNet(torch.nn.Module):  # type: ignore[misc]
     def __init__(self) -> None:
@@ -135,7 +143,7 @@ def prepare_input(
         backend.close()
 
 
-@pytest.mark.parametrize("backend_name", EXECUTING_BACKENDS)
+@pytest.mark.parametrize("backend_name", CPU_CAPABLE)
 @pytest.mark.parametrize(("batch", "seed"), CASES)
 def test_backend_uses_the_canonical_input(
     backend_name: str, batch: int, seed: int, cache: Path, monkeypatch: pytest.MonkeyPatch
@@ -154,17 +162,15 @@ def test_all_backends_receive_identical_inputs(
     batch: int, seed: int, cache: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The headline claim: bit-identical inputs across every executing backend."""
-    arrays = {
-        name: prepare_input(name, batch, seed, cache, monkeypatch)[0] for name in EXECUTING_BACKENDS
-    }
-    first, *rest = EXECUTING_BACKENDS
+    arrays = {name: prepare_input(name, batch, seed, cache, monkeypatch)[0] for name in CPU_CAPABLE}
+    first, *rest = CPU_CAPABLE
     for other in rest:
         assert np.array_equal(arrays[first], arrays[other]), (
             f"{first} and {other} benchmarked on different input values"
         )
 
 
-@pytest.mark.parametrize("backend_name", EXECUTING_BACKENDS)
+@pytest.mark.parametrize("backend_name", CPU_CAPABLE)
 def test_result_records_which_generator_produced_the_input(
     backend_name: str, cache: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -209,3 +215,30 @@ def test_precision_cast_is_the_only_conversion(
     expected = synthetic_input((2, *SHAPE), 5).astype(np.float16)
     assert prepared.dtype == np.float16
     assert np.array_equal(prepared, expected)
+
+
+@pytest.mark.parametrize("backend_name", CUDA_ONLY)
+def test_cuda_only_backends_reject_the_cpu_device(backend_name: str) -> None:
+    """A backend excluded from the CPU identity check must say so, loudly.
+
+    TensorRT has no CPU execution path, so it cannot be checked on the CPU device. It
+    must refuse that device outright -- never accept it and quietly do something else --
+    and its input identity is proven on the GPU by the Phase 6 evidence script.
+    """
+    from gpu_benchlab.core.errors import ConfigurationError
+
+    config = parse_config(
+        {
+            "name": f"cpu-rejection-{backend_name}",
+            "backend": backend_name,
+            "device": "cpu",
+            "model": {"name": "resnet50"},
+        }
+    )
+    with pytest.raises(ConfigurationError, match=r"(?i)cuda"):
+        build_backend(config, seed=0)
+
+
+def test_every_executing_backend_is_accounted_for() -> None:
+    """No backend may slip out of the identity checks by being added to neither list."""
+    assert set(CPU_CAPABLE) | set(CUDA_ONLY) == set(EXECUTING_BACKENDS)
