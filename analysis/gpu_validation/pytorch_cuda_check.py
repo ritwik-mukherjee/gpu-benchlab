@@ -331,10 +331,11 @@ def negative(checks: Checks, out_dir: Path) -> None:
         timeout=600,
     )
     stored = [json.loads(p.read_text(encoding="utf-8")) for p in results.glob("*/result.json")]
-    ok = (
-        len(stored) == 1
-        and stored[0]["status"] in ("unavailable", "failed")
-        and not stored[0]["raw_samples"]["latency_ms"]
+    # Every stored run must have refused, not just the newest: a leftover from an
+    # earlier invocation that had measured something would be a finding, not noise.
+    ok = bool(stored) and all(
+        s["status"] in ("unavailable", "failed") and not s["raw_samples"]["latency_ms"]
+        for s in stored
     )
     checks.expect(
         "N1",

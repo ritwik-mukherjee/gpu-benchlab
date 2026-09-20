@@ -312,9 +312,11 @@ def main() -> None:
     stored = [json.loads(p.read_text(encoding="utf-8")) for p in results.glob("*/result.json")]
     checks.expect(
         "N1",
-        len(stored) == 1
-        and stored[0]["status"] in ("unavailable", "failed")
-        and not stored[0]["raw_samples"]["latency_ms"],
+        bool(stored)
+        and all(
+            s["status"] in ("unavailable", "failed") and not s["raw_samples"]["latency_ms"]
+            for s in stored
+        ),
         "CUDA hidden: unavailable/failed with zero samples (no silent CPU session)",
         exit_code=done.returncode,
         stored_status=[s["status"] for s in stored],
