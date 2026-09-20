@@ -270,6 +270,7 @@ class OnnxRuntimeBackend(Backend):
         self._session: Any = None
         self._provider_options: dict[str, str] = {}
         self._runner: Callable[[Any], Any] | None = None
+        self._device_input: Any = None  # CUDA + IOBinding only; see prepare()
         self._settings: dict[str, SettingValue] = {
             "device": self._device_str,
             "requested_provider": self._provider,
@@ -483,6 +484,10 @@ class OnnxRuntimeBackend(Backend):
             ort = self._ort
             binding = self._session.io_binding()
             device_input = ort.OrtValue.ortvalue_from_numpy(array, "cuda", self._device_id)
+            # Kept so the device-resident input can be read back for evidence: IOBinding
+            # exposes bound outputs but not bound inputs. Holding the reference also
+            # makes this side's ownership of the device buffer explicit.
+            self._device_input = device_input
             binding.bind_ortvalue_input(name, device_input)
             binding.bind_output(output, "cuda", self._device_id)
             session = self._session
@@ -539,3 +544,4 @@ class OnnxRuntimeBackend(Backend):
         self._session = None
         self._runner = None
         self._model_bytes = None
+        self._device_input = None

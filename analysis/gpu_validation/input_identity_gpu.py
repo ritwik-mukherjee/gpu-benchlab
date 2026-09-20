@@ -60,18 +60,20 @@ def device_input(backend_name: str, batch: int, seed: int) -> tuple[np.ndarray, 
         prepared = backend.prepare(config)
         settings = dict(backend.descriptor.settings)
         kind = backend.descriptor.device_kind.value
+        device_value = getattr(backend, "_device_input", None)
         if hasattr(prepared, "detach"):  # PyTorch: a cuda tensor
             host = prepared.detach().cpu().numpy()
         elif isinstance(prepared, dict):  # ORT without IOBinding: a host feed
             host = next(iter(prepared.values()))
-        else:  # ORT with IOBinding: read the bound device input back
-            bound = prepared.get_inputs()[0] if hasattr(prepared, "get_inputs") else None
-            if bound is None:
-                raise AssertionError(
-                    f"{backend_name} prepared a {type(prepared).__name__} this script "
-                    "cannot read; extend it rather than skipping the check."
-                )
-            host = bound.numpy()
+        elif device_value is not None:  # ORT with IOBinding: the retained OrtValue
+            # IOBinding exposes bound outputs but not bound inputs, so the backend
+            # keeps the device-resident input; this copies it back to the host.
+            host = device_value.numpy()
+        else:
+            raise AssertionError(
+                f"{backend_name} prepared a {type(prepared).__name__} this script "
+                "cannot read; extend it rather than skipping the check."
+            )
         return np.ascontiguousarray(host), {**settings, "device_kind": kind}
     finally:
         backend.close()

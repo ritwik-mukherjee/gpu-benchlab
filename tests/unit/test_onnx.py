@@ -614,6 +614,20 @@ class TestCudaStructural:
         assert fake.bound_output == ("logits", "cuda", 0)
         assert fake.iobinding_runs == 1 + 2 + 4  # sanity + warmup + measured
 
+    def test_device_input_is_readable_for_evidence(self, fake: FakeOrt, environment) -> None:
+        """IOBinding exposes bound outputs but not bound inputs, so the backend keeps
+        the device-resident input; the GPU input-identity evidence reads it back."""
+        backend = OnnxRuntimeBackend(cfg("cuda:0"))
+        config = cfg("cuda:0")
+        backend.validate(config, environment)
+        backend.load()
+        backend.build()
+        backend.prepare(config)
+        assert backend._device_input is not None
+        assert backend._device_input.device == ("cuda", 0)
+        backend.close()
+        assert backend._device_input is None, "close() must release the device buffer"
+
     def test_device_index_reaches_provider(self, fake: FakeOrt, environment) -> None:
         BenchmarkEngine(environment=environment).run(
             OnnxRuntimeBackend(cfg("cuda:3")), cfg("cuda:3")
