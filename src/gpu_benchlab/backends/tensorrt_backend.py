@@ -232,7 +232,15 @@ class TensorRtBackend(Backend):
                 "explicit cast layers)."
             )
 
-        count = cuda_call(cudart, cudart.cudaGetDeviceCount())
+        # A CUDA error here means no usable device, which is `unavailable` -- the same
+        # status the PyTorch and ONNX Runtime backends report -- not `failed`.
+        error, count = cudart.cudaGetDeviceCount()
+        if int(error) != 0:
+            _, message = cudart.cudaGetErrorString(error)
+            raise UnavailableError(
+                f"TensorRT requires a CUDA device and the CUDA runtime reports none "
+                f"({message.decode()}). Not falling back to CPU."
+            )
         if not count:
             raise UnavailableError(
                 "TensorRT requires a CUDA device and the CUDA runtime reports none. "

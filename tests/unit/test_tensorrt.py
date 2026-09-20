@@ -869,3 +869,19 @@ class TestPhaseAttribution:
             assert backend.descriptor.settings["engine_deserialization_ms"] >= 0
         finally:
             backend.close()
+
+    def test_a_cuda_error_looking_for_devices_is_unavailable_not_failed(
+        self, fake: FakeTrt, staged_engine: Any, environment, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """With CUDA hidden the runtime returns error 100; that is a missing device.
+
+        PyTorch and ONNX Runtime both report `unavailable` for this, and the status
+        taxonomy (CLAUDE.md section 4) reserves `failed` for a valid configuration that
+        errored while running.
+        """
+        monkeypatch.setattr(fake.cudart, "cudaGetDeviceCount", lambda: (100, 0))
+        result = run_backend(cfg(batch=1), environment)
+        assert result.status is BenchmarkStatus.UNAVAILABLE
+        assert result.errors[0].phase == "validate"
+        assert "Not falling back to CPU" in result.errors[0].message
+        assert result.raw_samples.latency_ms == []
