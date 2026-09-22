@@ -13,9 +13,8 @@ exists — it is done when it has been executed and its output verified.
 | **4** | ONNX Runtime backend: CUDA EP, explicit provider recording | **Complete** — export reproducible; CPU EP and CUDA EP both executed and verified against PyTorch on real hardware |
 | **5A** | First NVIDIA hardware validation (NVML, CUDA events, correctness, ORT CUDA EP, telemetry, controlled benchmark) | **Complete** — NVIDIA L4, 2026-09-20; evidence in `results/published/2026-09-20-phase5a-l4/` |
 | **5B** | Controlled PyTorch vs ONNX Runtime rerun under unified inputs | **Complete** — NVIDIA L4, 2026-09-20; evidence in `results/published/2026-09-20-phase5b-l4-controlled-inputs/` |
-| 5B | TensorRT backend: ONNX→engine build, serialization, inference | Proposed next (awaiting approval) |
-| 6 | GPU telemetry: sampled utilisation, VRAM, power, temperature | Planned |
-| 7 | Experiment runner: YAML configs, batch/precision matrices | Planned |
+| **6** | TensorRT backend: ONNX→engine build, serialization, inference | **Implemented, not validated** — backend, engine-build layer, correctness gate, controlled configs and 37 tests are committed (`3ad58be`…`077e036`). Every test runs against a mocked TensorRT; **no TensorRT library has ever been executed by this project**. Phase 6A (real-environment probe) and Phase 6G (controlled benchmark) are outstanding |
+| 7 | Experiment runner: YAML configs, batch/precision matrices; in-process GPU telemetry sampling during a run (utilisation, VRAM, power, temperature) | Planned |
 | 8 | Comparison engine: baselines, speedups, derived metrics | Planned |
 | 9 | Dashboard: experiment browser, filtering, graphs | Planned |
 | 10 | LLM benchmarking: TensorRT-LLM, TTFT, tokens/sec, inter-token latency | Planned |
@@ -24,13 +23,24 @@ exists — it is done when it has been executed and its output verified.
 
 ## Immediate next steps
 
-1. **Model selection (Phase 3 prerequisite).** Research and document the first
-   vision model and first small decoder-only LLM, with reasoning, in `docs/models.md`.
-2. **Phase 3 — PyTorch backend.** The first real runtime. Most of it is
-   developable on CPU (`device=cpu` exercises load/prepare/execute and the whole
-   engine path); the CUDA-event timer and any CUDA measurement are not.
-3. **Validate Phases 1-2 on real hardware.** Two things need a GPU to confirm: the
-   NVML success path, and the CUDA-event timer against a synchronized host clock.
+1. **Phase 6A — TensorRT environment probe (read-only).** On the L4 VM, establish
+   which TensorRT release installs against driver 580.159.04 / CUDA 13.0, which shared
+   objects it actually loads, and whether `trtexec` exists on the pip route. Nothing is
+   installed into the benchmark venv, and no CUDA/driver change is made, until this is
+   reported. The dependency pins in `pyproject.toml` are **declared, not verified**.
+2. **Phase 6B–6F — execute the committed TensorRT path.** Parse, build, deserialize,
+   run once, then the correctness gate against PyTorch and ONNX Runtime. The code exists;
+   none of it has met a real TensorRT library. A failure at any gate stops the phase.
+3. **Phase 6G — controlled benchmark.** Only after every gate passes, and only with the
+   Phase 5B methodology unchanged, into a new evidence directory. Phase 5A and 5B
+   evidence is never touched.
+
+**On phase numbering.** TensorRT is **Phase 6**: that is what the commit messages, the
+plan (`docs/plans/phase-6-tensorrt.md`), the planned evidence directory name and the
+`p6-` experiment names in `analysis/gpu_validation/configs/` already say. In-process
+telemetry sampling, which this table previously listed as Phase 6, moves into the
+Phase 7 row rather than renumbering Phases 7–12 — those numbers are referenced from
+ADRs and earlier plans, which are historical records and are not rewritten.
 
 ## Deliberately deferred
 

@@ -142,12 +142,36 @@ class TestConfigErrors:
         assert "Configuration error" in result.stdout
 
     def test_unimplemented_backend_says_which_phase(self, tmp_path: Path) -> None:
+        """A backend that is genuinely not implemented must name its phase.
+
+        This asserted `tensorrt` until Phase 6 implemented it (`8ca5c7b`), at which
+        point `tensorrt` left `known_but_unimplemented` and the assertion went stale.
+        `tensorrt_llm` is the backend that is still unimplemented, so it now carries
+        the contract; `tensorrt`'s own contract is the test below.
+        """
+        path = tmp_path / "trtllm.yaml"
+        path.write_text("name: x\nbackend: tensorrt_llm\nmodel:\n  name: m\n", encoding="utf-8")
+        result = invoke(path, tmp_path / "results")
+        assert result.exit_code == EXIT_CONFIG_ERROR
+        assert "not implemented yet" in result.stdout
+        assert "Phase 10" in result.stdout
+
+    def test_tensorrt_is_implemented_and_refuses_the_default_cpu_device(
+        self, tmp_path: Path
+    ) -> None:
+        """`tensorrt` now reaches its backend, which has no CPU path.
+
+        The config names no device, so the default is CPU. TensorRT must refuse that
+        with a configuration error -- never accept it and quietly execute somewhere
+        else -- and must no longer claim to be unimplemented.
+        """
         path = tmp_path / "trt.yaml"
         path.write_text("name: x\nbackend: tensorrt\nmodel:\n  name: m\n", encoding="utf-8")
         result = invoke(path, tmp_path / "results")
         assert result.exit_code == EXIT_CONFIG_ERROR
-        assert "not implemented yet" in result.stdout
-        assert "Phase 5" in result.stdout
+        assert "requires an explicit CUDA device" in result.stdout
+        assert "no CPU execution path" in result.stdout
+        assert "not implemented yet" not in result.stdout
 
     def test_unknown_backend(self, tmp_path: Path) -> None:
         path = tmp_path / "nope.yaml"

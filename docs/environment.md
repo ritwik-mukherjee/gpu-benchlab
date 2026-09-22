@@ -100,13 +100,53 @@ detects this and reports `unavailable` (docs/decisions/0007).
 uv pip install -e ".[tensorrt]"
 ```
 
-The `tensorrt` PyPI package is a metapackage (latest: 11.3.0.99) that pulls in a
-CUDA-specific variant — currently `tensorrt_cu13`. If you are on CUDA 12, install the
-matching variant explicitly rather than relying on the metapackage default:
+**Nothing below has been executed.** No TensorRT has been installed by this project on
+any machine, and the pins are declared from the implementation's API requirements and
+from `docs/plans/phase-6-tensorrt.md`, not from a working install. **Phase 6A is the
+read-only probe that confirms or refutes this whole section.** Treat it as a plan.
+
+**Version: `tensorrt==11.3.0.99`, pinned exactly, not floored.** Two reasons. The build
+layer calls `builder.create_network(0)` and then asserts
+`NetworkDefinitionCreationFlag.STRONGLY_TYPED`; strongly typed networks are the default
+only from **TensorRT 11.0**, so on 10.x the same call yields a weakly typed network and
+the recorded precision policy would be wrong. And an engine is a compiled artifact whose
+bytes depend on the builder version, so a floor would make engine provenance meaningless.
+
+**`cuda-python` is required, not optional.** `export/tensorrt_build.py` imports
+`cuda.bindings.runtime` for device buffers, streams and events, so that the backend does
+not borrow a CUDA runtime from torch's dependency tree. The floor `>=12.6.1` is the
+earliest release whose documented API carries that module path. cuda-python ships lines
+matching the CUDA major version; **which line this VM needs is a Phase 6A question.**
+
+**Package source.** The `tensorrt` metapackage resolves to a CUDA-specific variant
+(`tensorrt_cu13` on CUDA 13). Wheels come from **NVIDIA's index**, not PyPI:
+
+```bash
+uv pip install -e ".[tensorrt]" --extra-index-url https://pypi.nvidia.com
+```
+
+On CUDA 12, install the matching variant explicitly rather than trusting the
+metapackage default:
 
 ```bash
 uv pip install tensorrt-cu12
 ```
+
+**Known limitations of this route.**
+
+- **No `trtexec`** and no C++ headers: the pip wheels ship the runtime and Python
+  bindings only. Every check Phase 6 needs is reachable through the Python API, and the
+  absence is recorded in the evidence rather than worked around.
+- The Debian package pulls CUDA toolkit components and can move the system CUDA stack;
+  the tar package needs manual `LD_LIBRARY_PATH` surgery, which is exactly the
+  library-resolution failure mode ONNX Runtime already demonstrated here. Neither is
+  used.
+- **A package that imports proves nothing.** ONNX Runtime taught that here. Phase 6A
+  records every CUDA/TensorRT shared object mapped into the process from
+  `/proc/self/maps`, so wheel libraries can be told from `/usr/local/cuda-*` ones.
+- `onnxruntime-gpu` also ships a `TensorrtExecutionProvider`. That is **not** this
+  backend, and a TensorRT-EP result must never be labelled either "ONNX Runtime CUDA" or
+  "TensorRT".
 
 ## 6. TensorRT-LLM
 

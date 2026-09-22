@@ -6,7 +6,7 @@ acceleration stacks — PyTorch, ONNX Runtime, TensorRT and TensorRT-LLM.**
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 
-> **Status: early development — Phase 4 of 12.**
+> **Status: early development — Phase 6 of 12, partially validated.**
 > Environment detection, the benchmark core, a PyTorch backend and an ONNX Runtime backend
 > (ResNet-50) are implemented and tested; ONNX Runtime's outputs are verified against
 > PyTorch. The development machine has **no NVIDIA GPU**: the PyTorch CPU
@@ -76,7 +76,7 @@ Timing and validity methodology: [docs/methodology.md](docs/methodology.md).
 | Simulated (`fake`) | Implemented | **Produces no measurements.** Seeded random latency model for testing the framework on a GPU-less machine. |
 | PyTorch | Implemented (Phase 3) | CPU and **CUDA both executed on real hardware** (NVIDIA L4, 2026-09-20). CUDA-event timing validated, explicit precision, IEEE FP32 enforced. |
 | ONNX Runtime | Implemented (Phase 4) | CPU EP and **CUDA EP both executed on real hardware** (NVIDIA L4, 2026-09-20): 122/122 nodes on the CUDA EP, outputs verified against PyTorch. Active EP verified — no silent CPU fallback. |
-| TensorRT | Planned — Phase 5 | Engine build time measured separately |
+| TensorRT | **Implemented (Phase 6), not validated** | Backend, engine-build layer and correctness gate are committed and unit-tested **against a mocked TensorRT**. No TensorRT library has been installed or executed; there are no TensorRT measurements. Engine build, deserialization and inference are separate lifecycle phases, so a build can never leak into inference latency |
 | TensorRT-LLM | Planned — Phase 10 | TTFT, inter-token latency, tokens/sec |
 
 ## 5. Supported models
@@ -239,7 +239,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The one non-negotiable rule is in
 
 ## 15. Roadmap
 
-Phased plan in [docs/roadmap.md](docs/roadmap.md). Current position: **Phase 1 complete.**
+Phased plan in [docs/roadmap.md](docs/roadmap.md). Current position: **Phases 0–5B
+complete and validated on an NVIDIA L4; Phase 6 (TensorRT) implemented but not yet
+validated** — Phase 6A (real-environment probe) and Phase 6G (controlled benchmark)
+are outstanding.
 
 ## 16. License
 

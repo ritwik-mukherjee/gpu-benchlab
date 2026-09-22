@@ -636,3 +636,81 @@ Input identity on GPU; ORT on the CUDA EP with 122/122 nodes, IOBinding, sync ex
 and its control, and the no-fallback test; PyTorch containment violations zero across all
 10 runs; no anomalies and no discarded runs; 5A evidence untouched; sanitizer dry run
 clean (161 redactions, nothing surviving); 215 files scanned for secrets, none found.
+
+---
+
+## 2026-09-20 — Phase 6: TensorRT backend implemented; documentation audit
+
+### What was built
+
+A third backend consuming the **same canonical ONNX artifact** as ONNX Runtime, by
+SHA-256. `export/tensorrt_build.py` parses, builds, serializes and caches an engine
+behind a manifest; `backends/tensorrt_backend.py` deserializes it, allocates
+device-resident buffers once in `prepare`, and executes `execute_async_v3` on a
+non-default stream with CUDA-event timing and a synchronized host secondary series — the
+PyTorch contract reused rather than a second timing methodology invented.
+
+The precision trap is the Phase 6 analogue of the PyTorch and ORT ones: TensorRT enables
+`BuilderFlag.TF32` by default, so an engine labelled FP32 is TF32 unless the flag is
+cleared. `ieee_fp32` clears it at build time and the manifest records the flag before and
+after the policy, so the claim is checkable rather than asserted.
+
+### The thing to be honest about
+
+**None of this has met a real TensorRT library.** All 37 tests run against a mocked
+`FakeTrt`/`FakeCudart`. They prove the *logic* — that parser errors are all surfaced,
+that TF32 is cleared, that an out-of-profile shape is `unsupported`, that buffers are
+freed on the error path — and prove nothing whatever about TensorRT's actual behaviour on
+an L4. Phase 6A, the read-only install and library probe, is the next step and has not
+run. Until it does, the code is category C: implemented, never executed.
+
+### Bugs found and fixed during implementation
+
+Engine filenames kept only part of their identity, so two engines differing in a recorded
+build setting could collide on one cache path (`e514ded`). The sanity pass did not fail
+when the device copy silently did not happen (`93bcc3c`). A missing CUDA device produced
+`failed` rather than `unavailable`, disagreeing with the other two backends and with the
+status taxonomy (`077e036`).
+
+### Documentation audit
+
+The repository had drifted from its own documentation in three ways, all corrected here.
+TensorRT carried three different phase numbers (README "Phase 5", roadmap a duplicate
+"5B", plan and commits "Phase 6"); four documents still described it as unimplemented
+while it sat committed at HEAD; and the `[tensorrt]` extra declared `tensorrt>=10.0` with
+no `cuda-python` at all, which would install a major version whose `create_network(0)` is
+weakly typed and then fail at import for want of `cuda.bindings.runtime`.
+
+Phase 6 is now the single designation, taken from what the commits and configs already
+said rather than chosen afresh. In-process telemetry, which had held the number, moved
+into the Phase 7 row; Phases 7-12 were left alone because ADRs reference them.
+
+### A finding in already-published data
+
+`analysis/controlled.json` in the Phase 5B evidence has always carried
+`warmup_sufficient` per run. **Nineteen of twenty runs are `false`** — the +/-2%
+block-median settle index exceeded the configured 100-iteration warmup, reaching 1010 in
+one PyTorch batch-1 repeat. That appeared in no README, no NOTES and not in the
+pre-registered gate. It is now documented in all three places as a measured observation.
+
+It is tempting to read it as the explanation for the PyTorch batch-1 spread failure. It
+is not one, and is not written as one: the same cell holds both the largest settle index
+and the only run that met the criterion, and Phase 5A already found this +/-2% rule
+jitter-dominated, so a `false` verdict may be the criterion rather than the data. Whether
+a longer warmup would narrow the spread is an untested hypothesis and is labelled as one.
+The published numbers are unchanged.
+
+### Environment hazard recorded for whoever works here next
+
+This repository lives on a Windows filesystem that can be mounted into a Linux
+environment. Windows Git checks out CRLF under a system-level `core.autocrlf=true` while
+the blobs are LF, so Linux-side `git status` reports **every line of 76 files** as
+modified. It is an artifact, not a change. A `git add -A` from that mount would rewrite
+the line endings of published Phase 3, 4 and 5A evidence in a single commit. Stage and
+commit from Windows only. A plain `git status` there also leaves an unremovable
+`.git/index.lock`; `git --no-optional-locks` avoids it.
+
+### Next
+
+Phase 6A: a read-only TensorRT environment probe on the L4, run manually. Nothing is
+installed and no CUDA or driver component is touched until its output is reviewed.

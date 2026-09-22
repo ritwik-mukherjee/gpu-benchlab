@@ -50,7 +50,18 @@ torch = ["torch>=2.4", "torchvision>=0.19"]
 onnx = ["onnx>=1.23", "onnxruntime-gpu>=1.30"]
 onnx-cpu = ["onnx>=1.23", "onnxruntime>=1.30"]
 onnx-export = ["torch>=2.4", "torchvision>=0.19", "onnx>=1.23", "onnxscript>=0.7"]
-tensorrt = ["tensorrt>=10.0"]
+# TensorRT 11.x only. The build layer calls `builder.create_network(0)` and then asserts
+# `NetworkDefinitionCreationFlag.STRONGLY_TYPED`, which is the default only from TensorRT
+# 11.0 onward; under 10.x the same call yields a weakly-typed network and the recorded
+# precision policy would be wrong. The exact pin follows docs/plans/phase-6-tensorrt.md
+# section 2: an engine is a compiled artifact whose bytes depend on the builder version.
+# cuda-python supplies `cuda.bindings.runtime` (device buffers, streams, events), which
+# export/tensorrt_build.py imports directly; the floor is the earliest release whose
+# documented API carries that module path.
+# NOT RUNTIME-VALIDATED: no TensorRT has been installed or executed by this project yet.
+# Phase 6A must confirm the TensorRT version, the CUDA-major-matching cuda-python variant
+# and the NVIDIA index before these pins are treated as verified.
+tensorrt = ["tensorrt==11.3.0.99", "cuda-python>=12.6.1"]
 
 # --- Development ---------------------------------------------------------------------
 dev = [

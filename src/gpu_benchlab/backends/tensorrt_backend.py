@@ -402,7 +402,28 @@ class TensorRtBackend(Backend):
         return self._stream
 
     def execute(self, inputs: Any) -> Any:
-        return self._context.execute_async_v3(inputs)
+        """Enqueue one inference on the execution stream.
+
+        ``execute_async_v3`` reports a refused enqueue by **returning False rather than
+        raising**, unlike the PyTorch and ONNX Runtime backends whose execute() paths
+        raise. An unchecked False would submit no work, leave the stream empty, and let
+        the CUDA-event timer measure an idle interval -- a near-zero sample that the
+        anomaly check cannot catch, because it flags samples above 10x the median, not
+        implausibly fast ones. That would be a fabricated measurement, so it is refused
+        here: the exception leaves the measurement loop before ``samples[i] = stop()``
+        runs, the partially filled sample list is discarded rather than returned, and
+        the engine records the run as failed, in the phase it failed in, with no
+        latency statistics and zero samples.
+        """
+        if not self._context.execute_async_v3(inputs):
+            raise BackendError(
+                "TensorRT refused to enqueue an inference: execute_async_v3 returned "
+                f"False on engine {self._settings.get('engine_file', '<unknown>')} at "
+                f"input shape {self._settings.get('input_shape', '<unknown>')} on device "
+                f"{self._device_str}. No work was submitted, so no timing for this "
+                "iteration is meaningful and none is recorded."
+            )
+        return None
 
     def synchronize(self) -> None:
         if self._stream is not None:

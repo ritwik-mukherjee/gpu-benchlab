@@ -364,7 +364,7 @@ Also produced by `correctness_gpu.py` (§7):
 
 ## 10. GPU telemetry
 
-**Implemented:** one NVML snapshot per result, taken at run start. **Not implemented:** sampling during a run (Phase 6). The benchmark loop must not poll, so the sampler here is `nvidia-smi` in a separate process (`run_logged`, §6), sampling every 100 ms.
+**Implemented:** one NVML snapshot per result, taken at run start. **Not implemented:** sampling during a run (Phase 7). The benchmark loop must not poll, so the sampler here is `nvidia-smi` in a separate process (`run_logged`, §6), sampling every 100 ms.
 
 ```bash
 for f in $E/telemetry/*.csv; do

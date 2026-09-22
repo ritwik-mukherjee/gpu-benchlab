@@ -55,6 +55,23 @@ launch rather than device execution, which would expose it to scheduling jitter 
 run did not perform - for example comparing event time against host launch time per
 iteration, pinning the sampler to another core, or CUDA graphs.
 
+## Warmup sufficiency (added after the run, from stored values; no data changed)
+
+**MEASURED:** 19 of 20 runs carry `warmup_sufficient: false` in `analysis/controlled.json`
+— i.e. the ±2% block-median settle index exceeded the configured 100-iteration warmup.
+Settle indices: PyTorch b1 860/330/320/0/1010; ORT b1 980/810/490/520/750; PyTorch b8
+480/470/300/380/530; ORT b8 140/460/430/440/210. Only PyTorch b1 r4 (k = 0) passed.
+
+**NOT ESTABLISHED:** any link between this and the PyTorch b1 spread failure. The cell
+with the largest settle index also holds the only passing run, so they do not order
+consistently. Separately, Phase 5A already found this ±2% rule jitter-dominated, so a
+`false` verdict may be the criterion's sensitivity rather than real non-stationarity.
+
+**UNTESTED HYPOTHESIS:** a longer warmup might reduce the spread, or might not. It needs
+the matrix rerun at several warmup counts against a pre-registered, validated criterion.
+
+The published results are unchanged. This is a qualification, not a correction.
+
 ## Anomalies
 
 None. No run was discarded, and no sample was removed.

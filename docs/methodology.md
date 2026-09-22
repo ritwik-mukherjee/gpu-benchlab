@@ -244,7 +244,7 @@ power or thermal telemetry was recorded. GPUs have analogous behaviours (boost
 clocks, power and thermal limits), so this must be checked on GPU runs, not assumed
 away.
 
-Consequences, until Phase 6 telemetry and a drift check exist:
+Consequences, until Phase 7 telemetry and a drift check exist:
 
 - An iteration-count warmup is **not evidence of steady state**. Inspect the raw
   samples in blocks before trusting a single-run p50.

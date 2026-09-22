@@ -256,7 +256,7 @@ class PyTorchBackend(Backend):
             raise UnsupportedConfigurationError(
                 f"Precision {self._precision.value} is not supported by eager PyTorch for "
                 "this model: there is no general-purpose quantized inference path. Use the "
-                "TensorRT backend (Phase 5) for reduced-precision integer/FP8 inference."
+                "TensorRT backend (Phase 6) for reduced-precision integer/FP8 inference."
             )
 
         if self._device_kind is DeviceKind.CUDA:

@@ -142,7 +142,10 @@ class FakeContext:
 
     def execute_async_v3(self, stream: Any) -> bool:
         self.fake.executions += 1
-        return not self.fake.execute_fails
+        if self.fake.execute_fails:
+            return False
+        after = self.fake.execute_fails_after
+        return not (after is not None and self.fake.executions > after)
 
 
 class FakeBuilder:
@@ -183,6 +186,10 @@ class FakeTrt:
         self.deserialize_fails = False
         self.context_fails = False
         self.execute_fails = False
+        # Fail every enqueue after this many have succeeded. `execute_fails` fails them
+        # all including the sanity pass; this lets a run reach warmup or the measured
+        # loop and only then be refused, which is where a fabricated sample could hide.
+        self.execute_fails_after: int | None = None
         self.plan_bytes = b"FAKE-TRT-ENGINE" * 16
         self.min_batch, self.opt_batch, self.max_batch = 1, 8, 8
         self.builder_config: FakeBuilderConfig | None = None
@@ -570,6 +577,36 @@ class TestBuildLayer:
         stem = config.stem("resnet50-canonical", "11.3.0.99", "8.9")
         assert "trt11.3.0.99" in stem and "sm89" in stem
         assert "b1_4_8" in stem and "ieee_fp32" in stem
+        # and the digest over every build-affecting setting, so options that are not
+        # spelled out in the filename still cannot collide.
+        assert config.build_identity()[:12] in stem
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("optimization_level", 5),
+            ("workspace_bytes", 1 << 30),
+            ("disable_timing_cache", True),
+            ("precision", "tf32"),
+            ("opt_batch", 4),
+            ("weights", "IMAGENET1K_V1"),
+            ("opset", 19),
+            ("model", "resnet18"),
+        ],
+    )
+    def test_every_build_affecting_setting_changes_the_identity(
+        self, field: str, value: Any
+    ) -> None:
+        """Each of these changes the engine bytes, so each must change the identity.
+
+        `optimization_level`, `workspace_bytes` and `disable_timing_cache` were absent
+        from both the filename and the cache lookup, which is what let an engine built
+        at one setting be served to a run that asked for another.
+        """
+        base = TrtBuildConfig(model="resnet50", weights="IMAGENET1K_V2")
+        other = base.model_copy(update={field: value})
+        assert base.build_identity() != other.build_identity(), field
+        assert base.stem("a", "11.3.0.99", "8.9") != other.stem("a", "11.3.0.99", "8.9"), field
 
     def test_cached_engine_is_reused_only_when_it_matches(self, tmp_path: Path) -> None:
         base = TensorRtManifest(
@@ -588,6 +625,9 @@ class TestBuildLayer:
             gpu_name="NVIDIA L4",
             compute_capability="8.9",
             precision_policy="ieee_fp32",
+            build_identity=TrtBuildConfig(
+                model="resnet50", weights="IMAGENET1K_V2"
+            ).build_identity(),
             profile=tensorrt_build.TrtProfile(min=[1, *CHW], opt=[8, *CHW], max=[8, *CHW]),
             builder_settings={},
             provenance=onnx_manifest_stub(tmp_path)[1].provenance,
@@ -597,6 +637,55 @@ class TestBuildLayer:
         assert not base.matches(base.model_copy(update={"compute_capability": "9.0"}))
         assert not base.matches(base.model_copy(update={"precision_policy": "tf32"}))
         assert not base.matches(base.model_copy(update={"source_onnx_sha256": "c" * 64}))
+        assert not base.matches(base.model_copy(update={"build_identity": "d" * 64}))
+        assert not base.matches(
+            base.model_copy(
+                update={
+                    "profile": tensorrt_build.TrtProfile(
+                        min=[1, *CHW], opt=[4, *CHW], max=[8, *CHW]
+                    )
+                }
+            )
+        )
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("optimization_level", 5),
+            ("workspace_bytes", 1 << 30),
+            ("disable_timing_cache", True),
+        ],
+    )
+    def test_a_differing_build_setting_rebuilds_instead_of_reusing(
+        self,
+        fake: FakeTrt,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        field: str,
+        value: Any,
+    ) -> None:
+        """End-to-end proof that the cache cannot silently serve a wrong engine."""
+        artifact, onnx = onnx_manifest_stub(tmp_path)
+        monkeypatch.setattr(
+            tensorrt_build, "ensure_artifact", lambda *a, **k: (artifact, onnx, False)
+        )
+        engines = tmp_path / "engines"
+        base = TrtBuildConfig(model="resnet50", weights="IMAGENET1K_V2")
+
+        first_path, _, built_first = tensorrt_build.ensure_engine(base, directory=engines)
+        assert built_first is True
+
+        same_path, _, built_again = tensorrt_build.ensure_engine(base, directory=engines)
+        assert built_again is False, "an identical request must reuse the cached engine"
+        assert same_path == first_path
+
+        other = base.model_copy(update={field: value})
+        other_path, other_manifest, built_other = tensorrt_build.ensure_engine(
+            other, directory=engines
+        )
+        assert built_other is True, f"changing {field} must force a rebuild"
+        assert other_path != first_path, f"changing {field} must change the engine filename"
+        assert other_manifest.build_identity == other.build_identity()
 
 
 # ================================================================ backend (structural)
@@ -711,6 +800,54 @@ class TestBackendLifecycle:
         assert result.errors[0].phase == "prepare"
         assert result.raw_samples.latency_ms == [], "nothing is measured after a bad sanity run"
 
+    def test_a_refused_enqueue_in_the_measured_loop_cannot_become_a_sample(
+        self, fake: FakeTrt, staged_engine: Any, environment
+    ) -> None:
+        """`execute_async_v3` returning False must never be timed as a fast iteration.
+
+        TensorRT signals a refused enqueue by returning False instead of raising. If
+        that is ignored, no work reaches the stream, the CUDA-event timer measures an
+        idle interval, and a near-zero latency is recorded as a real sample -- which the
+        anomaly check cannot catch, since it flags samples slower than 10x the median.
+        """
+        # sanity (1) + warmup (2) succeed; the first measured enqueue is refused.
+        fake.execute_fails_after = 3
+        result = run_backend(cfg(batch=1), environment)
+
+        assert result.status is BenchmarkStatus.FAILED
+        assert result.errors[0].phase == "measure"
+        assert "execute_async_v3 returned" in result.errors[0].message
+        assert result.errors[0].type == "BackendError"
+        # The point of the test: no fabricated timing survives anywhere.
+        assert result.raw_samples.latency_ms == []
+        assert result.raw_samples.secondary_latency_ms == []
+        assert result.latency is None
+        assert result.secondary_latency is None
+        assert result.throughput == []
+
+    def test_a_refused_enqueue_during_warmup_is_a_warmup_phase_error(
+        self, fake: FakeTrt, staged_engine: Any, environment
+    ) -> None:
+        fake.execute_fails_after = 1  # sanity passes; the first warmup enqueue is refused
+        result = run_backend(cfg(batch=1), environment)
+
+        assert result.status is BenchmarkStatus.FAILED
+        assert result.errors[0].phase == "warmup"
+        assert "execute_async_v3 returned" in result.errors[0].message
+        assert result.raw_samples.latency_ms == []
+        assert result.raw_samples.warmup_latency_ms == []
+        assert result.latency is None
+
+    def test_the_refusal_names_the_engine_and_shape_for_diagnosis(
+        self, fake: FakeTrt, staged_engine: Any, environment
+    ) -> None:
+        fake.execute_fails_after = 3
+        result = run_backend(cfg(batch=1), environment)
+        message = result.errors[0].message
+        assert ".plan" in message, "the engine file must be identifiable"
+        assert "1x3x224x224" in message, "the input shape must be identifiable"
+        assert "cuda:0" in message, "the device must be identifiable"
+
     def test_cleanup_still_happens_after_a_failure(
         self, fake: FakeTrt, staged_engine: Any, environment
     ) -> None:
@@ -793,10 +930,12 @@ class TestEnginePathsAreDistinct:
         plan, manifest = tensorrt_build.engine_paths(
             config, "resnet50-canonical", "11.3.0.99", "8.9", tmp_path
         )
-        assert plan.name == "resnet50-canonical-trt11.3.0.99-sm89-b1_8_8-ieee_fp32.plan"
-        assert manifest.name == (
-            "resnet50-canonical-trt11.3.0.99-sm89-b1_8_8-ieee_fp32.manifest.json"
-        )
+        base = "resnet50-canonical-trt11.3.0.99-sm89-b1_8_8-ieee_fp32"
+        # The trailing digest is the build identity (see _BUILD_IDENTITY_FIELDS): every
+        # human-readable axis still survives with_suffix(), which is what this covers.
+        digest = config.build_identity()[:12]
+        assert plan.name == f"{base}-{digest}.plan"
+        assert manifest.name == f"{base}-{digest}.manifest.json"
 
     @pytest.mark.parametrize(
         ("first", "second"),

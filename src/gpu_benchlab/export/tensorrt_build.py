@@ -19,6 +19,7 @@ Engines are cached outside the repository and never committed.
 from __future__ import annotations
 
 import hashlib
+import json
 import time
 from pathlib import Path
 from typing import Any, Literal
@@ -50,10 +51,34 @@ __all__ = [
     "import_tensorrt",
 ]
 
-TENSORRT_MANIFEST_VERSION = "1.0"
+TENSORRT_MANIFEST_VERSION = "1.1"  # 1.1 adds the required build_identity field
 
 PrecisionPolicy = Literal["ieee_fp32", "tf32"]
 """``ieee_fp32`` clears BuilderFlag.TF32; ``tf32`` leaves TensorRT's default in place."""
+
+_BUILD_IDENTITY_FIELDS = (
+    "model",
+    "weights",
+    "opset",
+    "min_batch",
+    "opt_batch",
+    "max_batch",
+    "precision",
+    "optimization_level",
+    "workspace_bytes",
+    "disable_timing_cache",
+)
+"""Every requested setting that can change the serialized engine bytes.
+
+The digest over these is the engine's cache identity: it is embedded in the engine
+filename, stored in the manifest as ``build_identity``, and compared on every cache
+lookup. Before this existed the filename encoded only the profile and precision, so an
+engine built at ``optimization_level=3`` was silently reused for a run that asked for
+``optimization_level=5`` -- the run measured an engine it had not configured. **A new
+build-affecting option must be added here, or it will be silently ignored by the
+cache.** Fields that are not requested settings (the TensorRT version, the GPU compute
+capability and the source ONNX hash) are separate axes, checked alongside the digest.
+"""
 
 
 def import_tensorrt() -> tuple[Any, Any]:
@@ -107,6 +132,15 @@ class TrtBuildConfig(BaseModel):
     )
     disable_timing_cache: bool = False
 
+    def build_identity(self) -> str:
+        """SHA-256 over every requested setting that can change the engine bytes."""
+        payload = json.dumps(
+            {name: getattr(self, name) for name in _BUILD_IDENTITY_FIELDS},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
     def profile(self, chw: tuple[int, ...]) -> dict[str, list[int]]:
         return {
             "min": [self.min_batch, *chw],
@@ -118,7 +152,7 @@ class TrtBuildConfig(BaseModel):
         batches = f"b{self.min_batch}_{self.opt_batch}_{self.max_batch}"
         return (
             f"{artifact_stem}-trt{trt_version}-sm{capability.replace('.', '')}-"
-            f"{batches}-{self.precision}"
+            f"{batches}-{self.precision}-{self.build_identity()[:12]}"
         )
 
 
@@ -154,18 +188,54 @@ class TensorRtManifest(BaseModel):
     compute_capability: str
 
     precision_policy: PrecisionPolicy
+    build_identity: str
     profile: TrtProfile
     builder_settings: dict[str, str | int | bool | None]
     provenance: Provenance
 
+    def _identity(self) -> tuple[object, ...]:
+        """What decides whether two engines are interchangeable.
+
+        ``matches()`` and ``ensure_engine()``'s cache lookup both go through this, so
+        the two cannot drift apart -- the defect this replaced was a lookup that
+        compared less than the build actually depended on.
+        """
+        return (
+            self.build_identity,
+            self.source_onnx_sha256,
+            self.tensorrt_version,
+            self.compute_capability,
+            self.precision_policy,
+            self.profile,
+        )
+
     def matches(self, other: TensorRtManifest) -> bool:
         """Whether a cached engine was built for exactly this situation."""
-        return (
-            self.source_onnx_sha256 == other.source_onnx_sha256
-            and self.tensorrt_version == other.tensorrt_version
-            and self.compute_capability == other.compute_capability
-            and self.precision_policy == other.precision_policy
-            and self.profile == other.profile
+        return self._identity() == other._identity()
+
+    def is_reusable_for(
+        self,
+        config: TrtBuildConfig,
+        *,
+        trt_version: str,
+        capability: str,
+        source_onnx_sha256: str,
+        chw: tuple[int, ...],
+    ) -> bool:
+        """Whether this cached engine may serve ``config`` on this runtime and GPU.
+
+        Compares the same tuple ``matches()`` does, so a cached engine is reused only
+        when every build-affecting setting, the source artifact, the TensorRT version,
+        the GPU architecture, the precision policy and the profile all agree.
+        """
+        shapes = config.profile(chw)
+        return self._identity() == (
+            config.build_identity(),
+            source_onnx_sha256,
+            trt_version,
+            capability,
+            config.precision,
+            TrtProfile(min=shapes["min"], opt=shapes["opt"], max=shapes["max"]),
         )
 
 
@@ -307,6 +377,7 @@ def build_engine(
         gpu_name=gpu_name,
         compute_capability=capability,
         precision_policy=config.precision,
+        build_identity=config.build_identity(),
         profile=TrtProfile(min=shapes["min"], opt=shapes["opt"], max=shapes["max"]),
         builder_settings=settings,
         provenance=capture_provenance(),
@@ -357,11 +428,12 @@ def ensure_engine(
                 f"(sha256 {digest[:16]}); delete it and rebuild."
             )
         source_sha = hashlib.sha256(artifact.read_bytes()).hexdigest()
-        if (
-            cached.source_onnx_sha256 == source_sha
-            and cached.tensorrt_version == trt.__version__
-            and cached.compute_capability == capability
-            and cached.precision_policy == config.precision
+        if cached.is_reusable_for(
+            config,
+            trt_version=trt.__version__,
+            capability=capability,
+            source_onnx_sha256=source_sha,
+            chw=tuple(int(d) for d in onnx_manifest.input.shape[1:]),
         ):
             return engine_path, cached, False
 

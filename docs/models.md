@@ -5,7 +5,7 @@
   exists.** Nothing in this document is a performance measurement.
 - **Researched:** 2026-09-18, against the sources linked in §9.
 - **Scope:** the initial suite for PyTorch (Phase 3), ONNX Runtime (Phase 4),
-  TensorRT (Phase 5) and TensorRT-LLM (Phase 10).
+  TensorRT (Phase 6) and TensorRT-LLM (Phase 10).
 
 Every figure below is one of two things, and is labelled as such:
 
@@ -14,7 +14,7 @@ Every figure below is one of two things, and is labelled as such:
 - **Arithmetic** — derived from published architecture parameters (e.g. bytes =
   parameters × bytes-per-element). These are sizing estimates, **not measurements**.
   Actual memory use depends on the runtime, allocator, workspace and activations,
-  and will be measured in Phase 6.
+  and will be measured in Phase 7.
 
 This document contains no latency or throughput expectations. There are none worth
 writing down before anything has been run.
@@ -73,7 +73,7 @@ and adds friction to exactly the first-run experience PRD §52 asks us to minimi
 | Compute | 4.09 GFLOPS per image at 224×224 (published, torchvision's figure) |
 | Weights file | 97.8 MB (published) |
 | Weight memory | FP32 ≈ 102 MB, FP16 ≈ 51 MB (arithmetic: params × 4 / × 2 bytes) |
-| Activation memory | Not estimated. Depends on batch size and runtime; measured in Phase 6. |
+| Activation memory | Not estimated. Depends on batch size and runtime; measured in Phase 7. |
 | Input | `float [N, 3, 224, 224]`, NCHW. Fixed spatial size, batch is the only dynamic dimension. |
 | Output | `float [N, 1000]` logits |
 | Formats | torchvision eager (state dict `.pth`) → ONNX → TensorRT engine |
@@ -345,7 +345,7 @@ LLM scenario.
 
 These are lower bounds on footprint. They exclude activations, workspace, CUDA
 context, allocator fragmentation and any runtime-specific overhead, all of which
-Phase 6 will measure.
+Phase 7 will measure.
 
 ---
 

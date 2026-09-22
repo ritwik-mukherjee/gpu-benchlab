@@ -1,7 +1,7 @@
 """Phase 5A runbook §10: summarise an nvidia-smi telemetry log captured during a run.
 
 The sampler is nvidia-smi itself, in a separate process (runbook §10) -- gpu_benchlab
-has no in-run telemetry yet (Phase 6), and the benchmark loop must not poll anything.
+has no in-run telemetry yet (Phase 7), and the benchmark loop must not poll anything.
 
 Reports, per GPU: achieved sampling interval vs requested, min / median / max of each
 numeric field, and every clock-event-reason bitmask seen, decoded with the constants

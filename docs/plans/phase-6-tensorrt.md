@@ -1,6 +1,12 @@
 # Phase 6 — TensorRT backend (plan)
 
-**Status: plan only. No TensorRT code exists yet, and nothing here is a result.**
+**Status (updated 2026-09-20): sections 4–11 and 15 are IMPLEMENTED IN CODE and
+committed (`3ad58be`…`077e036`); nothing here is a result.** Every TensorRT test runs
+against a mocked `FakeTrt`/`FakeCudart`, so **no TensorRT library has been installed or
+executed by this project**. Outstanding: **section 3 / Phase 6A** (the real-environment
+install and library probe) and **section 16 / Phase 6G** (the controlled benchmark and
+its evidence directory). The dependency pins added to `pyproject.toml` follow section 2
+but are **declared, not verified** — Phase 6A confirms them.
 Written 2026-09-20 against TensorRT 11.3.0 documentation and the actual L4 VM.
 
 Goal: a third backend that consumes the *same* canonical ONNX artifact as ONNX Runtime,

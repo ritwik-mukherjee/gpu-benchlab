@@ -97,6 +97,49 @@ experiment here distinguishes that from the alternatives.
 
 Note this cell was also the least stable in Phase 5A (4.29%, just inside the gate).
 
+## Warmup sufficiency — a measured property of these runs, recorded after publication
+
+This section was added after the matrix ran, from values already stored in
+`analysis/controlled.json`. **No measurement, raw sample or result file was changed.**
+
+**MEASURED OBSERVATION.** `analysis/controlled.json` carries a `warmup_sufficient` flag
+per run, defined in `analysis/gpu_validation/trajectory.py` as: the trajectory has a
+settle index *k* (the first iteration of the concatenated warmup+measured series from
+which every later block median stays within ±2% of *m\**), **and** *k* ≤ the configured
+warmup count. With warmup configured at 100 and 1000 measured iterations, **19 of the 20
+runs report `warmup_sufficient: false`.** Per-cell settle indices:
+
+| Cell | settle indices (5 repeats) |
+|---|---|
+| PyTorch b1 | 860, 330, 320, 0, 1010 |
+| ONNX Runtime b1 | 980, 810, 490, 520, 750 |
+| PyTorch b8 | 480, 470, 300, 380, 530 |
+| ONNX Runtime b8 | 140, 460, 430, 440, 210 |
+
+Only PyTorch b1 repeat 4 (*k* = 0) satisfies the criterion. A *k* of 1010 means the
+series first met the ±2% condition 910 iterations into the measured window.
+
+**WHAT THIS DOES NOT SAY.** This is **not** an explanation of the PyTorch batch-1
+stability failure. No experiment here tests whether warmup length affects the run-to-run
+spread, and the cell containing the largest settle index also contains the only run that
+met the criterion — so the two do not even order consistently within the cell.
+
+**A SECOND, COMPOUNDING CAVEAT.** The ±2% block-median rule is *itself* known to be
+unreliable at this jitter level: Phase 5A found it "jitter-dominated and could not
+separate warmup from noise" (`../2026-09-20-phase5a-l4/NOTES.md`, and `limitations.md`
+§6). A `false` verdict may therefore reflect the sensitivity of the criterion rather
+than genuine non-stationarity. Which of the two it is has not been established.
+
+**UNTESTED HYPOTHESIS.** A longer warmup might reduce the observed spread, or might
+change nothing. Testing it needs an experiment this run did not perform — for example
+the same matrix at several warmup counts, with a stationarity criterion registered in
+advance and validated against a synthetic trajectory of known settling behaviour.
+
+**STATUS OF THE PUBLISHED NUMBERS.** The results table above stands exactly as measured.
+This is a qualification on how confidently a steady state can be claimed, not a
+correction, and nothing above it has been recomputed or restated.
+
+
 ## Telemetry
 
 | Cell | SM clock | Power (median) | Event flags |

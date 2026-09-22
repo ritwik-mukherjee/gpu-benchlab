@@ -182,15 +182,24 @@ exists so the gap can be quantified rather than assumed.
   the batch-1 ratio should be read as a range, not a point.
 - **Peak VRAM is not measured in-process.** `telemetry/` holds 100 ms `nvidia-smi`
   samples that also cover load and export phases, so they are not a peak for the
-  measured loop. In-process peak memory is Phase 6 work.
+  measured loop. In-process peak memory is Phase 7 work.
 - **Graphs are not identical:** ORT executes 122 nodes on CUDA where the CPU EP fused
   the same model to 58.
 
-## 4. Not yet implemented
+## 4. Not yet implemented, and one thing implemented but unvalidated
 
-Phases 5–12: TensorRT, telemetry sampling during runs, the experiment runner
-(matrices, repeats), the comparison engine, dashboard, reports, and the LLM generation
-path. Reduced-precision (FP16/INT8) ONNX artifacts are out of Phase 4 scope. See
+**Implemented, never executed (category C):** the **TensorRT backend (Phase 6)**. The
+engine-build layer, backend, correctness gate, controlled configs and 37 tests are
+committed, but every one of those tests runs against a mocked `FakeTrt`/`FakeCudart`.
+**No TensorRT library has been installed or executed by this project**, so there is no
+TensorRT measurement, no engine, and no evidence directory. The `[tensorrt]` extra pins
+`tensorrt==11.3.0.99` and `cuda-python`; those pins are **declared, not verified** —
+Phase 6A (the read-only environment probe) confirms or refutes them.
+
+**Not implemented:** Phases 7–12 — the experiment runner (matrices, repeats) and
+in-process telemetry sampling during a run, the comparison engine, dashboard, reports,
+and the LLM generation path. Reduced-precision (FP16/INT8) ONNX artifacts are out of
+Phase 4 scope, and FP16/INT8/TF32 TensorRT cells are out of Phase 6 scope. See
 [roadmap.md](roadmap.md).
 
 ## 5. Platform limitations
@@ -210,6 +219,14 @@ path. Reduced-precision (FP16/INT8) ONNX artifacts are out of Phase 4 scope. See
   be registered before the data it judges: the ±2% block-median rule used in Phase 5A
   proved jitter-dominated and could not separate warmup from noise (see
   `results/published/2026-09-20-phase5a-l4/NOTES.md`).
+- **19 of the 20 Phase 5B runs report `warmup_sufficient: false`.** *Measured:* the
+  ±2% block-median settle index exceeded the configured 100-iteration warmup in every
+  run but one (PyTorch b1 r4). *Not established:* any connection to the PyTorch b1
+  spread failure — that cell holds both the largest settle index and the only passing
+  run. *Compounding:* the ±2% rule is itself jitter-dominated (bullet above), so a
+  `false` verdict may be the criterion rather than the data. *Untested hypothesis:* a
+  longer warmup might reduce the spread. The published Phase 5B numbers stand as
+  measured; see that evidence directory's README and NOTES.
 - A p99 from 100 samples is not a stable statistic (methodology §6).
 - Whether random-init and pinned weights cost the same on CPU is **still unknown**:
   the Phase 3 A/B experiment was inconclusive (see ENGINEERING_LOG 2026-09-18).

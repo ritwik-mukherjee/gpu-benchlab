@@ -6,6 +6,63 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added — Phase 6: TensorRT backend (implemented, **not validated on any GPU**)
+
+- **A third backend compiled from the same canonical ONNX artifact**, by SHA-256, that
+  ONNX Runtime consumes — TensorRT gets no export path of its own.
+  `export/tensorrt_build.py` (ONNX parser with every `get_error(i)` surfaced, builder
+  config, one optimization profile spanning batch 1–8, engine cache keyed on a manifest,
+  serialize/deserialize) and `backends/tensorrt_backend.py` (`TensorRtBackend`,
+  `TensorRtOptions`, `TrtCudaEventTimer`).
+- **FP32 means IEEE FP32.** TensorRT enables `BuilderFlag.TF32` by default, so an engine
+  built without clearing it is TF32. The `ieee_fp32` policy clears the flag at build time
+  and the engine manifest records `tf32_enabled_by_default`, `tf32_flag_after_policy`,
+  `strict_nans`, the timing-cache state and `strongly_typed_network`.
+- **The engine build is not inference.** Building happens in the `build` lifecycle phase
+  as `engine_build_ms`; deserialization, context creation and buffer allocation happen in
+  `prepare`. Input and output stay device-resident for the whole measured loop, the only
+  host copy being the untimed sanity pass. Timing reuses the PyTorch contract (CUDA
+  events primary, synchronized host time secondary) — no second timing methodology.
+- A shape outside the engine's optimization profile is `unsupported`, never clamped; a
+  missing CUDA device is `unavailable`, matching PyTorch and ONNX Runtime.
+- `tests/unit/test_tensorrt.py` (37 test functions) and the correctness collector
+  `analysis/gpu_validation/correctness_tensorrt.py`, plus the Phase 6 controlled configs.
+
+**What this is not.** Every TensorRT test runs against a mocked `FakeTrt`/`FakeCudart`.
+**No TensorRT library has been installed or executed by this project.** There is no
+engine, no TensorRT measurement and no evidence directory. Phase 6A (the read-only
+environment and library probe) and Phase 6G (the controlled benchmark) are outstanding,
+and until 6A reports, the `[tensorrt]` pins are declared rather than verified.
+
+### Changed — documentation reconciled with the repository (audit, 2026-09-20)
+
+- **One phase number for TensorRT: Phase 6.** The commit messages, the plan filename and
+  title, the planned evidence directory and the `p6-` experiment names already said 6,
+  while README said "Phase 5" and the roadmap carried a duplicate "5B" row. In-process
+  telemetry sampling, previously listed as Phase 6, moves into the Phase 7 row; Phases
+  7–12 keep their numbers because ADRs and earlier plans reference them and those are
+  historical records.
+- README, `limitations.md`, `roadmap.md` and the Phase 6 plan header no longer describe
+  TensorRT as unimplemented, and the roadmap's "immediate next steps" no longer describe
+  Phase 3 as upcoming. README's status line and "current position" agreed with neither
+  the repository nor each other; both now say Phase 6, implemented but unvalidated.
+- **`[tensorrt]` extra pinned to `tensorrt==11.3.0.99` and `cuda-python` added.** The
+  previous `tensorrt>=10.0` floor admitted TensorRT 10.x, where `create_network(0)`
+  yields a *weakly* typed network — the build layer passes exactly that and then asserts
+  `STRONGLY_TYPED`, which is only the default from 11.0. `cuda.bindings.runtime` is
+  imported directly by the build layer and was not declared at all, so installing the
+  extra produced an unrunnable backend. `docs/environment.md` §5 rewritten accordingly.
+
+### Added — Phase 5B warmup-sufficiency finding (documentation only; no data changed)
+
+- **19 of the 20 published Phase 5B runs report `warmup_sufficient: false`**, a value
+  already stored in `analysis/controlled.json` but absent from the evidence README, the
+  operator notes and the pre-registered stability gate. Settle indices are now tabulated
+  per cell. Recorded strictly as a measured observation: no causal link to the PyTorch
+  batch-1 spread failure is claimed, the ±2% criterion's own known jitter-sensitivity is
+  restated alongside it, and the hypothesis that a longer warmup would help is marked
+  untested. No raw sample, result or telemetry file was modified.
+
 ### Added — Phase 5B: controlled PyTorch vs ONNX Runtime comparison (NVIDIA L4)
 
 - **The Phase 5A matrix rerun with the input path unified**, and nothing else changed:
