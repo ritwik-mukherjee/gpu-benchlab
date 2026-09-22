@@ -1,0 +1,39 @@
+Running p6-controlled-tensorrt-cuda-fp32-b8 (backend=tensorrt, device=cuda:0, precision=fp32, batch=8, 
+warmup=100, iters=1000)
+
+Status: ok
+Device: cuda (cuda:0)
+Timing mechanism: cuda_event
+Secondary timing: wall_clock_synchronized (reported separately; never the headline)
+Model: resnet50 (ResNet, 25,557,032 params, weights IMAGENET1K_V2, sha256 11ad3fa62ca79e40...)
+
+Phases                          
+Phase                   Duration
+Model load            839.076 ms
+Engine build         1466.777 ms
+Prepare inputs         55.378 ms
+Warmup (total)        730.749 ms
+Measurement (total)  7519.542 ms
+
+Latency              
+Statistic     Value  
+samples        1000  
+min        7.358 ms  
+mean       7.499 ms  
+median     7.495 ms  
+p50        7.495 ms  
+p90        7.582 ms  
+p95        7.590 ms  
+p99        7.650 ms  
+max        7.751 ms  
+std dev    0.069 ms  
+
+Throughput                                                                     
+  Value  Unit         Derived from                                             
+1066.86  samples/sec  batch_size / mean_latency_s                              
+1063.89  samples/sec  measurement_iterations * batch_size / measurement_total_s
+
+Secondary (wall_clock_synchronized): p50 7.507 ms, p95 7.608 ms, mean 7.511 ms
+
+
+Result written to results/phase6/controlled/runs/ctl-tensorrt-b8-r4/0b81e5f78363
