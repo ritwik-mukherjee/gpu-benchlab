@@ -193,8 +193,9 @@ engine-build layer, backend, correctness gate, controlled configs and 37 tests a
 committed, but every one of those tests runs against a mocked `FakeTrt`/`FakeCudart`.
 **No TensorRT library has been installed or executed by this project**, so there is no
 TensorRT measurement, no engine, and no evidence directory. The `[tensorrt]` extra pins
-`tensorrt==11.3.0.99` and `cuda-python`; those pins are **declared, not verified** —
-Phase 6A (the read-only environment probe) confirms or refutes them.
+`tensorrt-cu13==11.3.0.99` and `cuda-python==13.4.1`. Phase 6A selected the CUDA-13
+variant from the verified NVIDIA L4 environment, but it has not yet been installed or
+runtime-validated by this project.
 
 **Not implemented:** Phases 7–12 — the experiment runner (matrices, repeats) and
 in-process telemetry sampling during a run, the comparison engine, dashboard, reports,

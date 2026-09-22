@@ -56,12 +56,12 @@ onnx-export = ["torch>=2.4", "torchvision>=0.19", "onnx>=1.23", "onnxscript>=0.7
 # precision policy would be wrong. The exact pin follows docs/plans/phase-6-tensorrt.md
 # section 2: an engine is a compiled artifact whose bytes depend on the builder version.
 # cuda-python supplies `cuda.bindings.runtime` (device buffers, streams, events), which
-# export/tensorrt_build.py imports directly; the floor is the earliest release whose
-# documented API carries that module path.
+# export/tensorrt_build.py imports directly. Pin it to the CUDA 13 release verified by
+# Phase 6A alongside the CUDA-13 TensorRT package variant.
 # NOT RUNTIME-VALIDATED: no TensorRT has been installed or executed by this project yet.
-# Phase 6A must confirm the TensorRT version, the CUDA-major-matching cuda-python variant
-# and the NVIDIA index before these pins are treated as verified.
-tensorrt = ["tensorrt==11.3.0.99", "cuda-python>=12.6.1"]
+# Phase 6A verified the CUDA-13 selection on the actual NVIDIA L4 environment; installation
+# and TensorRT execution remain intentionally out of scope until the next phase.
+tensorrt = ["tensorrt-cu13==11.3.0.99", "cuda-python==13.4.1"]
 
 # --- Development ---------------------------------------------------------------------
 dev = [

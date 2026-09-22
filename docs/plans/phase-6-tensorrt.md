@@ -3,10 +3,9 @@
 **Status (updated 2026-09-20): sections 4–11 and 15 are IMPLEMENTED IN CODE and
 committed (`3ad58be`…`077e036`); nothing here is a result.** Every TensorRT test runs
 against a mocked `FakeTrt`/`FakeCudart`, so **no TensorRT library has been installed or
-executed by this project**. Outstanding: **section 3 / Phase 6A** (the real-environment
-install and library probe) and **section 16 / Phase 6G** (the controlled benchmark and
-its evidence directory). The dependency pins added to `pyproject.toml` follow section 2
-but are **declared, not verified** — Phase 6A confirms them.
+executed by this project**. Phase 6A verified the CUDA-13 dependency selection against
+the actual NVIDIA L4 environment; installation and the library probe remain outstanding,
+as does **section 16 / Phase 6G** (the controlled benchmark and its evidence directory).
 Written 2026-09-20 against TensorRT 11.3.0 documentation and the actual L4 VM.
 
 Goal: a third backend that consumes the *same* canonical ONNX artifact as ONNX Runtime,
@@ -44,8 +43,11 @@ runtime stack explicitly (§3).
 **Chosen: pip wheels into the existing project venv**, from NVIDIA's index:
 
 ```
-.venv/bin/pip install "tensorrt==11.3.0.99" --extra-index-url https://pypi.nvidia.com
+.venv/bin/pip install "tensorrt-cu13==11.3.0.99" "cuda-python==13.4.1" --extra-index-url https://pypi.nvidia.com
 ```
+
+The CUDA-13 package variant is deliberate: Phase 6A resolved this exact pair against
+NVIDIA's index on the verified L4 environment (CUDA 13, Python 3.12, r580 driver).
 
 Why not the alternatives:
 
@@ -65,7 +67,7 @@ available through the Python API, and the absence is recorded in the evidence.
 `pyproject.toml` extra becomes:
 
 ```
-tensorrt = ["tensorrt==11.3.0.99"]
+tensorrt = ["tensorrt-cu13==11.3.0.99", "cuda-python==13.4.1"]
 ```
 
 Exact pin, not a floor: an engine is a compiled artifact whose bytes depend on the
